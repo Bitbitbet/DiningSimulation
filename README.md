@@ -7,5 +7,5 @@
 
 是一个使用vite的react项目，一定要用pnpm，不要用npm
 
-## 后端名字叫什么？
+## back_canteen_bjtu
 TODO
