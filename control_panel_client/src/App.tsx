@@ -1,4 +1,19 @@
+import { useState } from "react";
+
 export default function App() {
+  const [content, setContent] = useState("Waiting for response...");
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      const response = await fetch('https://localhost:23456/api/status');
+      const data = await response.json();
+
+      setContent(data);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -8,6 +23,11 @@ export default function App() {
             <p className="text-slate-600 mt-1">展示历史运营指标，并支持仿真控制、数据源切换与参数生成。</p>
           </div>
           <div className="flex gap-3">
+            <p className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow">{content}</p>
+            <button className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow" onClick={() => {
+              setLoading(true);
+              fetchData();
+            }}>/api/status测试</button>
             <button className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow">导出报表</button>
             <button className="px-4 py-2 rounded-2xl bg-white border shadow-sm">刷新数据</button>
           </div>
