@@ -1,31 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import AppContext, { useAppContext } from "./AppContext";
 
 export default function App() {
   const [content, setContent] = useState("Waiting for response...");
-  const [loading, setLoading] = useState(false);
+  const [isOnline, setIsOnline] = useState(false);
 
-  const fetchData = async () => {
+  const checkBackendStatus = async () => {
     try {
-      const response = await fetch('http://localhost:23456/api/status',{
-        method: 'GET',
-      });
-      const data = await response.text();
-
-      setContent(data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+      const response = await fetch('http://localhost:23456/api/status');
+      setIsOnline(response.ok);
+    } catch {
+      setIsOnline(false);
     }
   };
 
-  const testButtonOnClick = () => {
-    setLoading(true);
-    fetchData();
-  }
+  useEffect(() => {
+    checkBackendStatus();
+    const interval = setInterval(checkBackendStatus, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-  return Content(content, loading, testButtonOnClick);
+  return (
+    <AppContext.Provider value={{ isOnline, checkBackendStatus }}>
+      <Content />
+    </AppContext.Provider>
+  );
 }
 
-function Content(content: string, loading: boolean, testButtonOnClick: () => void) {
+const Content = () => {
+  const { isOnline } = useAppContext();
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -33,10 +37,12 @@ function Content(content: string, loading: boolean, testButtonOnClick: () => voi
           <div>
             <h1 className="text-3xl font-bold tracking-tight">餐厅预约主界面数据面板</h1>
             <p className="text-slate-600 mt-1">展示历史运营指标，并支持仿真控制、数据源切换与参数生成。</p>
+            <div className="flex items-center gap-2 mt-2">
+              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-sm text-slate-600">{isOnline ? '后端在线✅' : '后端离线🛑'}</span>
+            </div>
           </div>
           <div className="flex gap-3">
-            <p className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow">{content}</p>
-            <button className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow" onClick={testButtonOnClick}>/api/status测试</button>
             <button className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow">导出报表</button>
             <button className="px-4 py-2 rounded-2xl bg-white border shadow-sm">刷新数据</button>
           </div>
@@ -218,4 +224,4 @@ function Content(content: string, loading: boolean, testButtonOnClick: () => voi
       </div>
     </div>
   );
-}
+};
