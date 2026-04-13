@@ -1,6 +1,6 @@
 package com.hbjtu.canteen.Controller;
 
-import com.hbjtu.canteen.service.cantenService;
+import com.hbjtu.canteen.service.CanteenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api")
-public class cantennController {
+public class CanteenController {
     @Autowired
-    private cantenService cantenservice;
+    private CanteenService canteenService;
     @GetMapping("/status")
     public String getHello(){
-        return cantenservice.getHello();
+        return canteenService.getHello();
     }
 }

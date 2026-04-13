@@ -1,5 +1,5 @@
 package com.hbjtu.canteen.service;
 
-public interface cantenService {
+public interface CanteenService {
     String getHello();
 }
