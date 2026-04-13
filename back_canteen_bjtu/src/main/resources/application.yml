@@ -1,0 +1,6 @@
+server:
+  port: 23456  # 项目运行端口（默认就是8080，可改）
+
+spring:
+  application:
+    name: canteen-system  # 应用名称（自定义）
