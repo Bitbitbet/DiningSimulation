@@ -6,7 +6,7 @@ export default function App() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('https://localhost:23456/api/status');
+      const response = await fetch('http://localhost:23456/api/status');
       const data = await response.json();
 
       setContent(data);
@@ -14,6 +14,16 @@ export default function App() {
       console.error('Error:', error);
     }
   };
+
+  const testButtonOnClick = () => {
+    setLoading(true);
+    fetchData();
+  }
+
+  return Content(content, loading, testButtonOnClick);
+}
+
+function Content(content: string, loading: boolean, testButtonOnClick: () => void) {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -24,10 +34,7 @@ export default function App() {
           </div>
           <div className="flex gap-3">
             <p className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow">{content}</p>
-            <button className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow" onClick={() => {
-              setLoading(true);
-              fetchData();
-            }}>/api/status测试</button>
+            <button className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow" onClick={testButtonOnClick}>/api/status测试</button>
             <button className="px-4 py-2 rounded-2xl bg-slate-900 text-white shadow">导出报表</button>
             <button className="px-4 py-2 rounded-2xl bg-white border shadow-sm">刷新数据</button>
           </div>
