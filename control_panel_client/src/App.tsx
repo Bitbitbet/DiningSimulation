@@ -6,12 +6,14 @@ export default function App() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('http://localhost:23456/api/status');
-      const data = await response.json();
+      const response = await fetch('http://localhost:23456/api/status',{
+        method: 'GET',
+      });
+      const data = await response.text();
 
       setContent(data);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching data:', error);
     }
   };
 
