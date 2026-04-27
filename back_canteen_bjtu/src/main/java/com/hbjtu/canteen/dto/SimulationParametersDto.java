@@ -31,8 +31,8 @@ public class SimulationParametersDto {
     public void setSimulationDurationMinutes(int simulationDurationMinutes) { this.simulationDurationMinutes = simulationDurationMinutes; }
     public double getArrivalRate() { return arrivalRate; }
     public void setArrivalRate(double arrivalRate) { this.arrivalRate = arrivalRate; }
-    public String getDishRatio() { return dishRatio; }
-    public void setDishRatio(String dishRatio) { this.dishRatio = dishRatio; }
+    public Map<DishType, Integer> getDishRatio() { return dishRatio; }
+    public void setDishRatio(Map<DishType, Integer> dishRatio) { this.dishRatio = dishRatio; }
     public double getAveragePrepMinutes() { return averagePrepMinutes; }
     public void setAveragePrepMinutes(double averagePrepMinutes) { this.averagePrepMinutes = averagePrepMinutes; }
     public double getAverageEatMinutes() { return averageEatMinutes; }
@@ -43,8 +43,6 @@ public class SimulationParametersDto {
     public void setChefCount(int chefCount) { this.chefCount = chefCount; }
     public int getSeatCount() { return seatCount; }
     public void setSeatCount(int seatCount) { this.seatCount = seatCount; }
-    public String getDispatchRule() { return dispatchRule; }
-    public void setDispatchRule(String dispatchRule) { this.dispatchRule = dispatchRule; }
     public boolean isAutoLeaveWhenFull() { return autoLeaveWhenFull; }
     public void setAutoLeaveWhenFull(boolean autoLeaveWhenFull) { this.autoLeaveWhenFull = autoLeaveWhenFull; }
 }
