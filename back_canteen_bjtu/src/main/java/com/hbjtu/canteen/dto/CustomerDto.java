@@ -1,9 +1,12 @@
 package com.hbjtu.canteen.dto;
 
+import com.hbjtu.canteen.enums.CustomerStatus;
+import com.hbjtu.canteen.enums.DishType;
+
 public class CustomerDto {
     private int id;
     private double arriveTime;
-    private String orderType;
+    private DishType orderType;
     private double prepTime;
     private double eatTime;
     private int windowId;
@@ -11,12 +14,14 @@ public class CustomerDto {
     private double queueEnd;
     private double eatStart;
     private double leaveTime;
-    private String status;
+    private CustomerStatus status;
 
     public CustomerDto() {
     }
 
-    public CustomerDto(int id, double arriveTime, String orderType, double prepTime, double eatTime, int windowId, double queueStart, double queueEnd, double eatStart, double leaveTime, String status) {
+    public CustomerDto(int id, double arriveTime, DishType orderType, double prepTime,
+                       double eatTime, int windowId, double queueStart, double queueEnd,
+                       double eatStart, double leaveTime, CustomerStatus status) {
         this.id = id;
         this.arriveTime = arriveTime;
         this.orderType = orderType;
@@ -34,8 +39,8 @@ public class CustomerDto {
     public void setId(int id) { this.id = id; }
     public double getArriveTime() { return arriveTime; }
     public void setArriveTime(double arriveTime) { this.arriveTime = arriveTime; }
-    public String getOrderType() { return orderType; }
-    public void setOrderType(String orderType) { this.orderType = orderType; }
+    public DishType getOrderType() { return orderType; }
+    public void setOrderType(DishType orderType) { this.orderType = orderType; }
     public double getPrepTime() { return prepTime; }
     public void setPrepTime(double prepTime) { this.prepTime = prepTime; }
     public double getEatTime() { return eatTime; }
@@ -50,6 +55,6 @@ public class CustomerDto {
     public void setEatStart(double eatStart) { this.eatStart = eatStart; }
     public double getLeaveTime() { return leaveTime; }
     public void setLeaveTime(double leaveTime) { this.leaveTime = leaveTime; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public CustomerStatus getStatus() { return status; }
+    public void setStatus(CustomerStatus status) { this.status = status; }
 }

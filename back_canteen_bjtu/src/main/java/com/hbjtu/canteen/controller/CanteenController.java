@@ -1,8 +1,6 @@
 package com.hbjtu.canteen.controller;
 
 import com.hbjtu.canteen.dto.DashboardResponse;
-import com.hbjtu.canteen.dto.ReservationRequest;
-import com.hbjtu.canteen.dto.ReservationResponse;
 import com.hbjtu.canteen.dto.SimulationParametersDto;
 import com.hbjtu.canteen.dto.StatusResponse;
 import com.hbjtu.canteen.service.CanteenService;
@@ -30,16 +28,6 @@ public class CanteenController {
     @GetMapping("/dashboard")
     public DashboardResponse getDashboard() {
         return canteenService.getDashboard();
-    }
-
-    @PostMapping("/reservation/estimate")
-    public ReservationResponse estimateReservation(@RequestBody ReservationRequest request) {
-        return canteenService.estimateReservation(request);
-    }
-
-    @PostMapping("/reservation/confirm")
-    public ReservationResponse confirmReservation(@RequestBody ReservationRequest request) {
-        return canteenService.confirmReservation(request);
     }
 
     @PutMapping("/simulation/parameters")

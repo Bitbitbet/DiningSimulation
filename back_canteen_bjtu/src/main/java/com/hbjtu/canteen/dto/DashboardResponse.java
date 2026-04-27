@@ -1,10 +1,12 @@
 package com.hbjtu.canteen.dto;
 
+import com.hbjtu.canteen.enums.SimulationState;
+
 import java.util.List;
 import java.util.Map;
 
 public class DashboardResponse {
-    private String simulationState;
+    private SimulationState simulationState;
     private double simulationSpeed;
     private int currentTimeMinute;
     private double averageQueueLength;
@@ -20,8 +22,8 @@ public class DashboardResponse {
     private List<Map<String, Object>> history;
     private SimulationParametersDto parameters;
 
-    public String getSimulationState() { return simulationState; }
-    public void setSimulationState(String simulationState) { this.simulationState = simulationState; }
+    public SimulationState getSimulationState() { return simulationState; }
+    public void setSimulationState(SimulationState simulationState) { this.simulationState = simulationState; }
     public double getSimulationSpeed() { return simulationSpeed; }
     public void setSimulationSpeed(double simulationSpeed) { this.simulationSpeed = simulationSpeed; }
     public int getCurrentTimeMinute() { return currentTimeMinute; }

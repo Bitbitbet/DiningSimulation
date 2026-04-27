@@ -1,27 +1,29 @@
 package com.hbjtu.canteen.dto;
 
+import com.hbjtu.canteen.enums.DishType;
+
+import java.util.Map;
+
 public class SimulationParametersDto {
     private int simulationDurationMinutes;
     private double arrivalRate;
-    private String dishRatio;
+    private Map<DishType, Integer> dishRatio;
     private double averagePrepMinutes;
     private double averageEatMinutes;
     private int windowCount;
     private int chefCount;
     private int seatCount;
-    private String dispatchRule;
     private boolean autoLeaveWhenFull;
 
     public SimulationParametersDto() {
         this.simulationDurationMinutes = 180;
         this.arrivalRate = 1.8;
-        this.dishRatio = "A:40%, B:35%, C:25%";
+        this.dishRatio = null;
         this.averagePrepMinutes = 5.5;
         this.averageEatMinutes = 24.0;
         this.windowCount = 4;
         this.chefCount = 4;
         this.seatCount = 24;
-        this.dispatchRule = "最短队列";
         this.autoLeaveWhenFull = false;
     }
 

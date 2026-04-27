@@ -3,12 +3,14 @@ package com.hbjtu.canteen.service.impl;
 import com.hbjtu.canteen.dto.ChefDto;
 import com.hbjtu.canteen.dto.CustomerDto;
 import com.hbjtu.canteen.dto.DashboardResponse;
-import com.hbjtu.canteen.dto.ReservationRequest;
-import com.hbjtu.canteen.dto.ReservationResponse;
 import com.hbjtu.canteen.dto.SeatDto;
 import com.hbjtu.canteen.dto.SimulationParametersDto;
 import com.hbjtu.canteen.dto.StatusResponse;
 import com.hbjtu.canteen.dto.WindowDto;
+import com.hbjtu.canteen.enums.ChefSkillType;
+import com.hbjtu.canteen.enums.CustomerStatus;
+import com.hbjtu.canteen.enums.DishType;
+import com.hbjtu.canteen.enums.SimulationState;
 import com.hbjtu.canteen.service.CanteenService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
@@ -17,15 +19,12 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
-
 
 @Service
 public class CanteenServiceImpl implements CanteenService {
@@ -46,7 +45,7 @@ public class CanteenServiceImpl implements CanteenService {
     // 仿真参数，由前端设置
     private SimulationParametersDto parameters = new SimulationParametersDto();
     // 当前模拟的开始状态
-    private String simulationState = "未开始";
+    private SimulationState simulationState = com.hbjtu.canteen.enums.SimulationState.pending;
 
     // 实时模拟参数
     private double simulationSpeed = 1.0;
@@ -70,49 +69,10 @@ public class CanteenServiceImpl implements CanteenService {
 
     @Override
     public synchronized DashboardResponse getDashboard() {
-        if ("运行中".equals(simulationState)) {
+        if (simulationState == SimulationState.started) {
             tick();
         }
         return buildDashboard();
-    }
-
-    @Override
-    public synchronized ReservationResponse estimateReservation(ReservationRequest request) {
-        WindowDto bestWindow = windows.stream().min(Comparator.comparingInt(w -> w.getQueue().size())).orElse(windows.get(0));
-        int estimatedWait = bestWindow.getEstimatedWaitMinutes() + Math.max(0, request.getPartySize() - 1) * 2;
-        int freeSeats = (int) seats.stream().filter(seat -> seat.getOccupiedBy() == null).count();
-        String suggestion = freeSeats >= request.getPartySize()
-                ? "当前可安排座位，建议按推荐窗口取餐。"
-                : "座位较紧张，建议错峰或等待座位释放。";
-        return new ReservationResponse(request.getStudentId(), bestWindow.getId(), estimatedWait, bestWindow.getQueue().size() + 1, freeSeats, suggestion, false);
-    }
-
-    @Override
-    public synchronized ReservationResponse confirmReservation(ReservationRequest request) {
-        ReservationResponse estimate = estimateReservation(request);
-        WindowDto window = windows.stream().filter(w -> w.getId() == estimate.getAssignedWindowId()).findFirst().orElse(windows.get(0));
-        int newCustomerId = customerIdGenerator.incrementAndGet();
-        window.getQueue().add(newCustomerId);
-        window.setStatus("忙碌");
-        window.setEstimatedWaitMinutes(window.getEstimatedWaitMinutes() + 3);
-        CustomerDto customer = new CustomerDto(
-                newCustomerId,
-                currentTimeMinute,
-                safeDish(request.getDishType()),
-                round(parameters.getAveragePrepMinutes() + random.nextDouble() * 2),
-                round(parameters.getAverageEatMinutes() + random.nextDouble() * 8),
-                window.getId(),
-                currentTimeMinute,
-                currentTimeMinute + estimate.getEstimatedWaitMinutes(),
-                currentTimeMinute + estimate.getEstimatedWaitMinutes() + 1,
-                currentTimeMinute + estimate.getEstimatedWaitMinutes() + 1 + parameters.getAverageEatMinutes(),
-                "预约成功"
-        );
-        recentCustomers.add(0, customer);
-        trimRecentCustomers();
-        recalculateMetrics();
-        return new ReservationResponse(request.getStudentId(), estimate.getAssignedWindowId(), estimate.getEstimatedWaitMinutes(), window.getQueue().size(),
-                (int) seats.stream().filter(seat -> seat.getOccupiedBy() == null).count(), "预约已登记，请前往窗口 " + window.getId() + " 取餐。", true);
     }
 
     @Override
@@ -125,7 +85,7 @@ public class CanteenServiceImpl implements CanteenService {
 
     @Override
     public synchronized DashboardResponse startSimulation() {
-        simulationState = "运行中";
+        simulationState = SimulationState.started;
         simulationSpeed = 1.5;
         tick();
         return buildDashboard();
@@ -133,13 +93,13 @@ public class CanteenServiceImpl implements CanteenService {
 
     @Override
     public synchronized DashboardResponse pauseSimulation() {
-        simulationState = "已暂停";
+        simulationState = SimulationState.paused;
         return buildDashboard();
     }
 
     @Override
     public synchronized DashboardResponse resetSimulation() {
-        simulationState = "未开始";
+        simulationState = SimulationState.pending;
         simulationSpeed = 1.0;
         currentTimeMinute = 0;
         history.clear();
@@ -159,32 +119,31 @@ public class CanteenServiceImpl implements CanteenService {
         chefs.clear();
         seats.clear();
         for (int i = 1; i <= parameters.getWindowCount(); i++) {
-            String dish = switch (i % 3) {
-                case 1 -> "A套餐";
-                case 2 -> "B套餐";
-                default -> "C套餐";
+            DishType dish = switch (i % 3) {
+                case 1 -> DishType.A;
+                case 2 -> DishType.B;
+                default -> DishType.C;
             };
             int queueSize = 2 + random.nextInt(4);
             List<Integer> queue = new ArrayList<>();
             for (int q = 0; q < queueSize; q++) {
                 queue.add(customerIdGenerator.incrementAndGet());
             }
-            windows.add(new WindowDto(i, Math.min(i, parameters.getChefCount()), queue, queueSize > 0 ? "忙碌" : "空闲",
+            windows.add(new WindowDto(i, Math.min(i, parameters.getChefCount()), queue, queueSize > 0,
                     round(0.18 + random.nextDouble() * 0.1), dish, 4 + queueSize * 2));
         }
         for (int i = 1; i <= parameters.getChefCount(); i++) {
-            String skill = switch (i % 3) {
-                case 1 -> "A套餐偏快";
-                case 2 -> "B套餐偏快";
-                default -> "综合";
+            ChefSkillType skill = switch (i % 3) {
+                case 1 -> ChefSkillType.BetterAtA;
+                case 2 -> ChefSkillType.BetterAtB;
+                default -> ChefSkillType.BetterAtC;
             };
             Integer currentOrder = i <= windows.size() && !windows.get(i - 1).getQueue().isEmpty() ? windows.get(i - 1).getQueue().get(0) : null;
-            chefs.add(new ChefDto(i, skill, currentOrder, currentOrder == null ? "空闲" : "忙碌", round(0.55 + random.nextDouble() * 0.3)));
+            chefs.add(new ChefDto(i, skill, currentOrder, currentOrder != null, round(0.55 + random.nextDouble() * 0.3)));
         }
         for (int i = 1; i <= parameters.getSeatCount(); i++) {
             Integer occupiedBy = random.nextDouble() > 0.32 ? customerIdGenerator.incrementAndGet() : null;
-            String zone = i <= parameters.getSeatCount() / 3 ? "东区" : (i <= parameters.getSeatCount() * 2 / 3 ? "中区" : "西区");
-            seats.add(new SeatDto(i, occupiedBy, zone));
+            seats.add(new SeatDto(i, occupiedBy));
         }
     }
 
@@ -203,13 +162,13 @@ public class CanteenServiceImpl implements CanteenService {
             } else if (random.nextDouble() > 0.65) {
                 window.getQueue().add(customerIdGenerator.incrementAndGet());
             }
-            window.setStatus(window.getQueue().isEmpty() ? "空闲" : "忙碌");
+            window.setIsBusy(window.getQueue().isEmpty());
             window.setEstimatedWaitMinutes(2 + window.getQueue().size() * 2);
         }
         // 处理厨师
         for (ChefDto chef : chefs) {
             boolean busy = random.nextDouble() > 0.25;
-            chef.setStatus(busy ? "忙碌" : "空闲");
+            chef.setIsBusy(busy);
             // ????
             chef.setUtilization(round(busy ? (0.70 + random.nextDouble() * 0.25) : 0.20 + random.nextDouble() * 0.2));
             // 设置厨师当前处理的菜品 ？？？？？
@@ -324,32 +283,28 @@ public class CanteenServiceImpl implements CanteenService {
     }
 
     private List<WindowDto> copyWindows() {
-        return windows.stream().map(w -> new WindowDto(w.getId(), w.getChefId(), new ArrayList<>(w.getQueue()), w.getStatus(), w.getServeRate(), w.getDishType(), w.getEstimatedWaitMinutes())).collect(Collectors.toList());
+        return windows.stream().map(w -> new WindowDto(w.getId(), w.getChefId(), new ArrayList<>(w.getQueue()), w.isBusy(), w.getServeRate(), w.getDishType(), w.getEstimatedWaitMinutes())).collect(Collectors.toList());
     }
 
     private List<ChefDto> copyChefs() {
-        return chefs.stream().map(c -> new ChefDto(c.getId(), c.getSkill(), c.getCurrentOrder(), c.getStatus(), c.getUtilization())).collect(Collectors.toList());
+        return chefs.stream().map(c -> new ChefDto(c.getId(), c.getSkill(), c.getCurrentOrder(), c.isBusy(), c.getUtilization())).collect(Collectors.toList());
     }
 
     private List<SeatDto> copySeats() {
-        return seats.stream().map(s -> new SeatDto(s.getId(), s.getOccupiedBy(), s.getZone())).collect(Collectors.toList());
+        return seats.stream().map(s -> new SeatDto(s.getId(), s.getOccupiedBy())).collect(Collectors.toList());
     }
 
     private List<CustomerDto> copyCustomers() {
         return recentCustomers.stream().map(c -> new CustomerDto(c.getId(), c.getArriveTime(), c.getOrderType(), c.getPrepTime(), c.getEatTime(), c.getWindowId(), c.getQueueStart(), c.getQueueEnd(), c.getEatStart(), c.getLeaveTime(), c.getStatus())).collect(Collectors.toList());
     }
 
-    private String safeDish(String dishType) {
-        return dishType == null || dishType.isBlank() ? randomDish() : dishType;
-    }
-
-    private String randomDish() {
-        String[] dishes = {"A套餐", "B套餐", "C套餐"};
+    private DishType randomDish() {
+        DishType[] dishes = {DishType.A, DishType.B, DishType.C};
         return dishes[random.nextInt(dishes.length)];
     }
 
-    private String randomStatus() {
-        String[] statuses = {"排队中", "取餐完成", "就餐中", "已离场"};
+    private CustomerStatus randomStatus() {
+        CustomerStatus[] statuses = {CustomerStatus.Queuing,CustomerStatus.Eating,CustomerStatus.Left};
         return statuses[random.nextInt(statuses.length)];
     }
 
