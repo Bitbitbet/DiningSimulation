@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -49,7 +51,8 @@ public class CanteenServiceImpl implements CanteenService {
 
     // 实时模拟参数
     private double simulationSpeed = 1.0;
-    private int currentTimeMinute = 0;
+    private double timer = 0.0;
+    private Instant lastUpdate;
     private double averageQueueLength = 0.0;
     private double averageWaitMinutes = 0.0;
     private double chefUtilization = 0.0;
@@ -86,8 +89,9 @@ public class CanteenServiceImpl implements CanteenService {
     @Override
     public synchronized DashboardResponse startSimulation() {
         simulationState = SimulationState.started;
-        simulationSpeed = 1.5;
-        tick();
+        simulationSpeed = 1.0; // TODO
+        startTime = Instant.now();
+        currentTime = startTime;
         return buildDashboard();
     }
 
@@ -101,7 +105,7 @@ public class CanteenServiceImpl implements CanteenService {
     public synchronized DashboardResponse resetSimulation() {
         simulationState = SimulationState.pending;
         simulationSpeed = 1.0;
-        currentTimeMinute = 0;
+        timer = 0.0;
         history.clear();
         recentCustomers.clear();
         rebuildStaticResources();
@@ -151,6 +155,9 @@ public class CanteenServiceImpl implements CanteenService {
      * 进行模拟
      */
     private void tick() {
+        Instant realTime = Instant.now();
+        Duration elapsed = Duration.between(realTime, currentTime);
+
         currentTimeMinute = Math.min(parameters.getSimulationDurationMinutes(),
                 currentTimeMinute + Math.max(1, (int) Math.round(simulationSpeed * 5)));
         // 处理窗口
@@ -206,7 +213,7 @@ public class CanteenServiceImpl implements CanteenService {
         }
     }
 
-    private void seedHistory() {
+    private void seedHistory() {// TODO
         for (int i = 0; i < 8; i++) {
             history.add(buildHistoryPoint(i * 15,
                     4.0 + random.nextDouble() * 4,
@@ -266,7 +273,7 @@ public class CanteenServiceImpl implements CanteenService {
         DashboardResponse response = new DashboardResponse();
         response.setSimulationState(simulationState);
         response.setSimulationSpeed(simulationSpeed);
-        response.setCurrentTimeMinute(currentTimeMinute);
+        response.setCurrentTimeSecond(Duration.between(currentTime,startTime).getSeconds());
         response.setAverageQueueLength(averageQueueLength);
         response.setAverageWaitMinutes(averageWaitMinutes);
         response.setChefUtilization(chefUtilization);

@@ -8,7 +8,7 @@ import java.util.Map;
 public class DashboardResponse {
     private SimulationState simulationState;
     private double simulationSpeed;
-    private int currentTimeMinute;
+    private long currentTimeSecond;
     private double averageQueueLength;
     private double averageWaitMinutes;
     private double chefUtilization;
@@ -26,8 +26,8 @@ public class DashboardResponse {
     public void setSimulationState(SimulationState simulationState) { this.simulationState = simulationState; }
     public double getSimulationSpeed() { return simulationSpeed; }
     public void setSimulationSpeed(double simulationSpeed) { this.simulationSpeed = simulationSpeed; }
-    public int getCurrentTimeMinute() { return currentTimeMinute; }
-    public void setCurrentTimeMinute(int currentTimeMinute) { this.currentTimeMinute = currentTimeMinute; }
+    public long getCurrentTimeSecond() { return currentTimeSecond; }
+    public void setCurrentTimeSecond(long currentTimeSecond) { this.currentTimeSecond = currentTimeSecond; }
     public double getAverageQueueLength() { return averageQueueLength; }
     public void setAverageQueueLength(double averageQueueLength) { this.averageQueueLength = averageQueueLength; }
     public double getAverageWaitMinutes() { return averageWaitMinutes; }
