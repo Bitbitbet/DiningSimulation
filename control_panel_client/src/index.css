@@ -50,6 +50,30 @@ label {
   color: #54657d;
 }
 
+.label-text {
+  display: inline-block;
+}
+
+.input-with-unit {
+  position: relative;
+  margin-top: 0.45rem;
+}
+
+.input-with-unit input {
+  margin-top: 0;
+  padding-right: 5rem;
+}
+
+.input-unit {
+  position: absolute;
+  top: 50%;
+  right: 0.9rem;
+  transform: translateY(-50%);
+  color: #5d6b82;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
 .page-shell {
   display: grid;
   grid-template-columns: 280px 1fr;
