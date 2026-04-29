@@ -1,35 +1,86 @@
 package com.hbjtu.canteen.service.impl;
 
-import com.hbjtu.canteen.dto.ChefDto;
-import com.hbjtu.canteen.dto.CustomerDto;
-import com.hbjtu.canteen.dto.DashboardResponse;
-import com.hbjtu.canteen.dto.SeatDto;
-import com.hbjtu.canteen.dto.SimulationParametersDto;
-import com.hbjtu.canteen.dto.StatusResponse;
-import com.hbjtu.canteen.dto.WindowDto;
+import com.hbjtu.canteen.dto.*;
 import com.hbjtu.canteen.enums.ChefSkillType;
 import com.hbjtu.canteen.enums.CustomerStatus;
 import com.hbjtu.canteen.enums.DishType;
 import com.hbjtu.canteen.enums.SimulationState;
-import com.hbjtu.canteen.service.CanteenService;
+import com.hbjtu.canteen.service.CanteenSimulation;
 import jakarta.annotation.PostConstruct;
-import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-@Service
-public class CanteenServiceImpl implements CanteenService {
+public class CanteenSimulationImpl implements CanteenSimulation {
+    private final Thread workerThread;
+    private volatile boolean running;
+    private volatile boolean shutdown;
+
+    private final Object pauseLock = new Object();
+
+    public CanteenSimulationImpl() {
+        running = false;
+        shutdown = false;
+        this.workerThread = new Thread(this::workerRun);
+    }
+
+    public void setUpdatePerSecond(int updatePerSecond) {}
+
+    public void pauseSimulation() {
+        running = false;
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
+    }
+
+    public void resumeSimulation() {
+        running = true;
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
+    }
+
+    public void getDashboardResponse() {}
+
+    public void shutdown() {
+        shutdown = true;
+        running = false;
+        synchronized (pauseLock) {
+            pauseLock.notifyAll();
+        }
+    }
+
+    private void workerRun() {
+        // 工作线程主循环
+        while(true) {
+            // 检查运行状态
+            synchronized (pauseLock) {
+                while (!running || !shutdown) {
+                    try {
+                        pauseLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
+            // shutdown为true，退出
+            if (shutdown) {
+                return;
+            }
+
+            workerTick();
+        }
+    }
+
+    private void workerTick() {}
+
     // 随机数生成器
     private final Random random = new Random(42);
     // 顾客ID生成器
@@ -65,12 +116,10 @@ public class CanteenServiceImpl implements CanteenService {
         resetSimulation();
     }
 
-    @Override
     public StatusResponse getStatus() {
         return new StatusResponse(true, "back_canteen_bjtu", "后端服务运行正常");
     }
 
-    @Override
     public synchronized DashboardResponse getDashboard() {
         if (simulationState == SimulationState.started) {
             tick();
@@ -78,7 +127,6 @@ public class CanteenServiceImpl implements CanteenService {
         return buildDashboard();
     }
 
-    @Override
     public synchronized DashboardResponse updateParameters(SimulationParametersDto parameters) {
         this.parameters = parameters;
         rebuildStaticResources();
@@ -86,7 +134,6 @@ public class CanteenServiceImpl implements CanteenService {
         return buildDashboard();
     }
 
-    @Override
     public synchronized DashboardResponse startSimulation() {
         simulationState = SimulationState.started;
         simulationSpeed = 1.0; // TODO
@@ -95,13 +142,11 @@ public class CanteenServiceImpl implements CanteenService {
         return buildDashboard();
     }
 
-    @Override
     public synchronized DashboardResponse pauseSimulation() {
         simulationState = SimulationState.paused;
         return buildDashboard();
     }
 
-    @Override
     public synchronized DashboardResponse resetSimulation() {
         simulationState = SimulationState.pending;
         simulationSpeed = 1.0;
@@ -117,7 +162,7 @@ public class CanteenServiceImpl implements CanteenService {
     /*
      * 根据仿真参数重置
      * windows chefs 和 seats
-    */
+     */
     private void rebuildStaticResources() {
         windows.clear();
         chefs.clear();
