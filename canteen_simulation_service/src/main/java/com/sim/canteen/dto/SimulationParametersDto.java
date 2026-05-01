@@ -5,13 +5,17 @@ import com.sim.canteen.enums.DishType;
 import java.util.Map;
 
 public record SimulationParametersDto(
-        int simulationDurationMinutes,
-        double arrivalRate,
-        Map<DishType, Integer> dishRatio,
-        double averagePrepMinutes,
-        double averageEatMinutes,
+        int simulationTotalMinutes,
+
+        double customerArrivalRate,
+        Map<DishType, Integer> customerDishRatio,
+        double customerEatTimeAvg,
+        double customerEatTimeStdVar,
+
+        double dishAveragePrepMinutes,
+
         int windowCount,
         int chefCount,
-        int seatCount,
-        boolean autoLeaveWhenFull) {
+        int seatCount
+) {
 }

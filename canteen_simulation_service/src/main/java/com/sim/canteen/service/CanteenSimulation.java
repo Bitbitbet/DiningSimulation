@@ -13,12 +13,9 @@ public interface CanteenSimulation {
 
     StatusResponse getStatus();
 
-    public DashboardResponse getDashboardResponse();
+    public void getDashboardResponse();
 
-
-    public DashboardResponse generateNewSimulationData(SimulationParametersDto parameters);
-
-    public boolean updateTickPerSecond(int tickPerSecond);
+    public void selectSimulationData(SimulationParametersDto parameters);
 
     public void shutdown();
 }

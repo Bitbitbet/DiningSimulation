@@ -2,30 +2,50 @@ package com.sim.canteen.service.impl;
 
 import com.sim.canteen.dto.*;
 import com.sim.canteen.service.CanteenSimulation;
+import com.sim.canteen.simulationData.SimulationData;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class CanteenSimulationImpl implements CanteenSimulation {
-    private volatile boolean running;
-    private volatile boolean shutdown;
+    private volatile boolean running = false;
+    private volatile boolean shutdown = false;
     private final Object pauseLock = new Object();
 
+    static final int TICK_PER_SECOND = 10;
+
+    // 仿真历史
+    private final List<HistoryPoint> history = new ArrayList<>();
+    // 窗口模拟数据
+    private final List<WindowDto> windows = new ArrayList<>();
+    // 厨师模拟数据
+    private final List<ChefDto> chefs = new ArrayList<>();
+    // 座位模拟数据
+    private final List<SeatDto> seats = new ArrayList<>();
+    // 顾客模拟数据
+    private final List<CustomerDto> customers = new ArrayList<>();
+
+    private final SimulationData simulationData = new SimulationData();
+
+    private double simulationSpeed;
+
+    private volatile Instant lastUpdate;
+
+    /**
+     * Current time(in seconds) of the emulation
+     */
+    private volatile double time;
+
     public CanteenSimulationImpl() {
-        running = false;
-        shutdown = false;
         // Start the worker thread
-        new Thread(this::workerRun);
+        new Thread(this::simulationThreadRun);
     }
 
-    @Override
-    public boolean updateTickPerSecond(int tickPerSecond) {
-        this.tickPerSecond = tickPerSecond;
-
-        return true;
+    public void resetSimulation() {
+        running = false;
+        shutdown = false;
+        time = 0;
     }
 
     @Override
@@ -49,7 +69,26 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     }
 
     @Override
-    public DashboardResponse getDashboardResponse() {}
+    public void getDashboardResponse() {}
+
+    @Override
+    public void selectSimulationData(SimulationParametersDto parameters) {
+        this.windows.clear();
+        for(int i = 0; i < parameters.windowCount(); ++i) {
+            this.windows.add(new WindowDto(i, List.of()));
+        }
+
+        this.chefs.clear();
+        for(int i = 0; i < parameters.chefCount(); ++i) {
+            this.chefs.add(new ChefDto(i, Optional.empty()));
+        }
+
+        this.seats.clear();
+        for(int i = 0; i < parameters.seatCount(); ++i) {
+            this.seats.add(new SeatDto(i, Optional.empty()));
+        }
+        this.simulationData.select(parameters);
+    }
 
     @Override
     public void shutdown() {
@@ -60,13 +99,15 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
     }
 
-    private volatile int tickPerSecond = 0;
-    private volatile Instant lastUpdate;
-    private void workerRun() {
+    private void simulationThreadRun() {
         // 工作线程主循环
         while(true) {
             try {
-                Thread.sleep(0, 1_000_000_000 / tickPerSecond);
+                var TIME = 1_000_000_000 / TICK_PER_SECOND;
+                var millis = TIME % 1000;
+                var nanos = TIME / 1000;
+                Thread.sleep(millis, nanos);
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
@@ -88,44 +129,21 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 return;
             }
 
-            workerTick();
+            simulationThreadTick();
             lastUpdate = Instant.now();
         }
     }
 
 
-    // 随机数生成器
-    private final Random random = new Random(42);
-    // 顾客ID生成器
-    private final AtomicInteger customerIdGenerator = new AtomicInteger(1000);
-
-    // 仿真历史
-    private final List<HistoryPoint> history = new ArrayList<>();
-    // 窗口模拟数据
-    private final List<WindowDto> windows = new ArrayList<>();
-    // 厨师模拟数据
-    private final List<ChefDto> chefs = new ArrayList<>();
-    // 座位模拟数据
-    private final List<SeatDto> seats = new ArrayList<>();
-    // 顾客模拟数据
-    private final List<CustomerDto> recentCustomers = new ArrayList<>();
-
-    private double simulationSpeed = 0;
-
-    private void workerTick() {
+    private void simulationThreadTick() {
         var timeLeap = Duration.between(Instant.now(),lastUpdate).toNanos() * simulationSpeed;
-        // TODO
+        time += timeLeap;
+        var newCustomers = simulationData.next_until(time);
+        
     }
 
     @Override
     public StatusResponse getStatus() {
         return new StatusResponse(true);
-    }
-
-    public synchronized DashboardResponse getDashboard() {
-    }
-
-    @Override
-    public synchronized DashboardResponse generateNewSimulationData(SimulationParametersDto parameters) {
     }
 }
