@@ -6,6 +6,7 @@ import java.util.List;
 
 public record WindowDto(
         int id,
+        DishType dishType,
         List<Integer> queue
 ) {
 }

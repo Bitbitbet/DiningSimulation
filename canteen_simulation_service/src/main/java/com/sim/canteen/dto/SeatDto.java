@@ -4,5 +4,5 @@ import java.util.Optional;
 
 public record SeatDto (
     int id,
-    Optional<Integer> occupiedByCustomer
+    Optional<Integer> customer
 ) {}

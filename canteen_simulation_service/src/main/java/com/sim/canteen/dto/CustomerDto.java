@@ -11,6 +11,7 @@ public record CustomerDto(
         Optional<Integer> queuingWindowId,
         double arriveTime,
         double eatTime,
+        double dishPrepTime,
         DishType orderType
 ) {
 }

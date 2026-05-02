@@ -30,7 +30,6 @@ public class SimulationData {
 
         this.cachedCustomer = map.get(false);
 
-
         return map.get(true)
                 .stream()
                 .map(arriveTime ->
@@ -39,12 +38,20 @@ public class SimulationData {
                                 CustomerStatus.Queuing,
                                 Optional.empty(),
                                 arriveTime,
-                                ThreadLocalRandom.current()
-                                        .nextGaussian(parameters.get().customerEatTimeAvg(), parameters.get().customerEatTimeStdVar()),
+                                randomEatTime(),
+                                randomDishPrepTime(),
                                 randomDishType())
                 ).collect(Collectors.toCollection(LinkedList::new));
     }
 
+    private double randomEatTime() {
+        return ThreadLocalRandom.current()
+                .nextGaussian(parameters.get().customerEatTimeAvg(), parameters.get().customerEatTimeStdVar());
+    }
+    private double randomDishPrepTime() {
+        return ThreadLocalRandom.current()
+                .nextGaussian(parameters.get().dishPrepTimeAvg(), parameters.get().dishPrepTimeStdVar());
+    }
     private DishType randomDishType() {
         var choose = Math.random();
         var w = parameters.get().customerDishRatio().values().stream().reduce(0, Integer::sum).intValue();
@@ -57,6 +64,7 @@ public class SimulationData {
             base += (double) weight / w;
             if (choose <= base) {
                 rst = dishType;
+                break;
             }
         }
         return rst;

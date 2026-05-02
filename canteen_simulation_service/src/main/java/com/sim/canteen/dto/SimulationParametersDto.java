@@ -2,6 +2,7 @@ package com.sim.canteen.dto;
 
 import com.sim.canteen.enums.DishType;
 
+import java.util.List;
 import java.util.Map;
 
 public record SimulationParametersDto(
@@ -9,12 +10,14 @@ public record SimulationParametersDto(
 
         double customerArrivalRate,
         Map<DishType, Integer> customerDishRatio,
+
         double customerEatTimeAvg,
         double customerEatTimeStdVar,
 
-        double dishAveragePrepMinutes,
+        double dishPrepTimeAvg,
+        double dishPrepTimeStdVar,
 
-        int windowCount,
+        List<DishType> windows,
         int chefCount,
         int seatCount
 ) {

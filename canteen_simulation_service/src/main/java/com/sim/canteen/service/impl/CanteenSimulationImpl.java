@@ -28,7 +28,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
     private final SimulationData simulationData = new SimulationData();
 
-    private double simulationSpeed;
+    private volatile double simulationSpeed;
 
     private volatile Instant lastUpdate;
 
@@ -46,6 +46,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         running = false;
         shutdown = false;
         time = 0;
+        simulationSpeed = 1;
     }
 
     @Override
@@ -75,18 +76,19 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     public void selectSimulationData(SimulationParametersDto parameters) {
         this.windows.clear();
         for(int i = 0; i < parameters.windowCount(); ++i) {
-            this.windows.add(new WindowDto(i, List.of()));
+            this.windows.add(new CanteenWindow(i));
         }
 
         this.chefs.clear();
         for(int i = 0; i < parameters.chefCount(); ++i) {
-            this.chefs.add(new ChefDto(i, Optional.empty()));
+            this.chefs.add(new ChefDto(i, Optional.empty(), Optional.empty()));
         }
 
         this.seats.clear();
         for(int i = 0; i < parameters.seatCount(); ++i) {
             this.seats.add(new SeatDto(i, Optional.empty()));
         }
+        this.customers.clear();
         this.simulationData.select(parameters);
     }
 
@@ -139,7 +141,16 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         var timeLeap = Duration.between(Instant.now(),lastUpdate).toNanos() * simulationSpeed;
         time += timeLeap;
         var newCustomers = simulationData.next_until(time);
-        
+        // 新顾客，加到结尾，窗口排队
+        for(var customer: newCustomers) {
+            var minWindow = this.windows.stream()
+                    .min(Comparator.comparingInt(a -> a.queue.size())).get();
+            minWindow.queue.add(customer.id());
+            customers.add(customer);
+        }
+
+        // 处理窗口，检查已完成的餐品
+
     }
 
     @Override
