@@ -15,8 +15,29 @@ public class CustomerEntity {
     public final DishType orderType;
 
     public CustomerStatus status;
-    public double dishPrepStartTime;
-    public double eatStartTime;
+
+    /**
+     * 当status == CustomerStatus.WaitingForDish
+     * 的时候设置
+     */
+    public double dishPrepEndTime;
+
+    /**
+     * 当status == CustomerStatus.WaitingForSeat
+     * 的时候设置
+     */
+    public double startWaitingForSeatTime;
+
+    /**
+     * 当status == CustomerStatus.Eating
+     * 的时候设置
+     */
+    public double eatEndTime;
+    /**
+     * 当status == CustomerStatus.Eating
+     * 的时候设置
+     */
+    public int seatId;
 
     public CustomerEntity(int id,
                           int groupId,

@@ -1,14 +1,21 @@
 package com.sim.canteen.service.impl;
 
-import com.sim.canteen.dto.*;
+import com.sim.canteen.dto.HistoryPoint;
+import com.sim.canteen.dto.SimulationParametersDto;
+import com.sim.canteen.dto.StatusResponse;
 import com.sim.canteen.entity.CustomerEntity;
+import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.entity.WindowEntity;
+import com.sim.canteen.enums.CustomerStatus;
 import com.sim.canteen.service.CanteenSimulation;
-import jakarta.annotation.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class CanteenSimulationImpl implements CanteenSimulation {
     static final int TICK_PER_SECOND = 10;
@@ -19,6 +26,8 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     private final List<WindowEntity> windows = new ArrayList<>();
     // 顾客实体
     private final HashMap<Integer, CustomerEntity> customers = new HashMap<>();
+    // 座位实体
+    private final List<SeatEntity> seats = new ArrayList<>();
     // 顾客组索引
     private final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
 
@@ -39,6 +48,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     public CanteenSimulationImpl() {
         // Start the worker thread
         new Thread(this::simulationThreadRun);
+        resetSimulation();
     }
 
     public void resetSimulation() {
@@ -77,9 +87,24 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         this.windows.clear();
         for (var w : parameters.windows()) {
             this.windows.add(
-                    new WindowEntity(w.dishType(),
-                    w.windowPrepTimeModifier(),
-                    new ArrayList<>())
+                    new WindowEntity(
+                            w.dishType(),
+                            w.windowPrepTimeModifier(),
+                            new ArrayList<>(),
+                            0.0
+                    )
+            );
+        }
+        for (int i = 0; i < parameters.seatCount(); i++) {
+            this.seats.add(
+                    new SeatEntity(
+                            i,
+                            new ArrayList<>(),
+                            0.0,
+                            0.0,
+                            0.0,
+                            0.0
+                    )
             );
         }
         this.customers.clear();
@@ -122,6 +147,8 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 return;
             }
 
+            var timeLeap = Duration.between(Instant.now(), lastUpdate).toNanos() * simulationSpeed;
+            time += timeLeap;
             simulationThreadTick();
             lastUpdate = Instant.now();
         }
@@ -129,16 +156,15 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
 
     private synchronized void simulationThreadTick() {
-        var timeLeap = Duration.between(Instant.now(), lastUpdate).toNanos() * simulationSpeed;
-        time += timeLeap;
         var newCustomers = simulationData.next_until(time);
         // 新顾客，加到结尾，窗口排队
         for (var customerGroup : newCustomers) {
-            for (var customer: customerGroup) {
+            for (var customer : customerGroup) {
                 customers.put(customer.id, customer);
                 var minWindow = this.windows.stream()
                         .filter(windowEntity -> windowEntity.dishType == customer.orderType)
                         .min(Comparator.comparingInt(a -> a.queue.size())).get();
+
                 minWindow.queue.add(customer.id);
 
                 customerGroups.putIfAbsent(customer.groupId, new ArrayList<>());
@@ -147,7 +173,132 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
 
         // 处理窗口的第一位
-        
+        while (true) {
+            boolean recheck = false;
+            for (var window : windows) {
+                if (!window.queue.isEmpty()) {
+                    var servingCustomer = customers.get(window.queue.getFirst());
+                    // 排队的第一位开始等待食物
+                    if (servingCustomer.status == CustomerStatus.Queuing) {
+                        // 顾客切换到等待食物状态
+                        servingCustomer.status = CustomerStatus.WaitingForDish;
+                        servingCustomer.dishPrepEndTime =
+                                window.freeSince + servingCustomer.simulatedDishPrepSeconds * window.windowPrepTimeModifier;
+                    }
+                    // 排队的第一位检查食物是否完成
+                    if (servingCustomer.status == CustomerStatus.WaitingForDish) {
+                        // 顾客食物完成
+                        if (servingCustomer.dishPrepEndTime <= time) {
+                            servingCustomer.status = CustomerStatus.WaitingForGroup;
+                            window.queue.removeFirst();
+                            window.freeSince = servingCustomer.dishPrepEndTime;
+                            recheck = true;
+                        }
+                    }
+                }
+            }
+            if (!recheck) break;
+        }
+        // 处理等待组员的顾客
+        for (var customer : customers.values()) {
+            if (customer.status == CustomerStatus.WaitingForGroup) {
+                var group = customerGroups.get(customer.id).stream().map(customers::get).collect(Collectors.toCollection(ArrayList::new));
+                if (group.stream()
+                        .allMatch(customerEntity -> customerEntity.status == CustomerStatus.WaitingForGroup)) {
+                    // 所有人都已经拿到食物
+                    var lastCustomerToGetFood = group.stream()
+                            .max(Comparator.comparingDouble(customerEntity -> customerEntity.dishPrepEndTime));
+                    var startWaitingForSeatTime = lastCustomerToGetFood.get().dishPrepEndTime;
+
+                    group.forEach(customerEntity -> {
+                        customerEntity.status = CustomerStatus.WaitingForSeat;
+                        customerEntity.startWaitingForSeatTime = startWaitingForSeatTime;
+                    });
+                }
+            }
+        }
+        while (true) {
+            boolean recheck = false;
+            // 处理所有的顾客离开，食物吃完
+            for (var iter = customers.entrySet().iterator(); iter.hasNext();) {
+                var customer = iter.next().getValue();
+                if (customer.status == CustomerStatus.Eating) {
+                    if(customer.eatEndTime <= time) {
+                        // 检查组，删除组
+                        var group = customerGroups.get(customer.groupId);
+                        group.remove(customer.id);
+                        if(group.isEmpty()) {
+                            customerGroups.remove(customer.groupId);
+                        }
+                        // 删除这个顾客
+                        iter.remove();
+
+                        var seat = seats.get(customer.seatId);
+                        seat.customers.remove(customer.id);
+                        switch(seat.customers.size()) {
+                            case 0:
+                                seat.fourFreeSince = customer.eatEndTime;
+                            case 1:
+                                seat.threeFreeSince = customer.eatEndTime;
+                            case 2:
+                                seat.twoFreeSince = customer.eatEndTime;
+                            case 3:
+                                seat.oneFreeSince = customer.eatEndTime;
+                        }
+                    }
+                }
+            }
+            // 处理所有的座位请求
+            var waiting_seat_customers = customers
+                    .values().stream()
+                    .filter(customer -> customer.status == CustomerStatus.WaitingForSeat)
+                    .sorted(Comparator.comparingDouble(customerEntity -> customerEntity.startWaitingForSeatTime))
+                    .collect(Collectors.toCollection(ArrayList::new));
+
+            var seatsByOccupation = seats.stream().collect(Collectors.groupingBy(seat -> seat.customers.size()));
+            for (var customer : waiting_seat_customers) {
+                SeatEntity seat = null;
+                double seatFreeSince = 0;
+                switch(customer.groupSize) {
+                    case 1:
+                        if(!seatsByOccupation.get(3).isEmpty()) {
+                            seat = seatsByOccupation.get(3).removeLast();
+                            seatFreeSince = seat.oneFreeSince;
+                            break;
+                        }
+                    case 2:
+                        if(!seatsByOccupation.get(2).isEmpty()) {
+                            seat = seatsByOccupation.get(3).removeLast();
+                            seatFreeSince = seat.twoFreeSince;
+                            break;
+                        }
+                    case 3:
+                        if(!seatsByOccupation.get(1).isEmpty()) {
+                            seat = seatsByOccupation.get(3).removeLast();
+                            seatFreeSince = seat.threeFreeSince;
+                            break;
+                        }
+                    case 4:
+                        if(!seatsByOccupation.get(0).isEmpty()) {
+                            seat = seatsByOccupation.get(3).removeLast();
+                            seatFreeSince = seat.fourFreeSince;
+                            break;
+                        }
+                }
+                if(seat != null) {
+                    recheck = true;
+                    for(var inGroupCustomerId: customerGroups.get(customer.groupId)) {
+                        var inGroupCustomer = customers.get(inGroupCustomerId);
+                        seat.customers.add(inGroupCustomerId);
+                        inGroupCustomer.status = CustomerStatus.Eating;
+                        inGroupCustomer.eatEndTime = seatFreeSince + inGroupCustomer.simulatedEatTimeSeconds;
+                    }
+                }
+            }
+            if(!recheck) break;
+        }
+
+
     }
 
     @Override

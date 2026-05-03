@@ -16,6 +16,6 @@ public record CustomerDto(
         double arriveTime,
         DishType orderType,
 
-        CustomerStatus status,
+        CustomerStatus status
 ) {
 }
