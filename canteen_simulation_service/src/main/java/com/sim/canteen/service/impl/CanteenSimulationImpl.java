@@ -297,8 +297,6 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             }
             if(!recheck) break;
         }
-
-
     }
 
     @Override

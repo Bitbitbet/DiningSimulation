@@ -1,6 +1,5 @@
 package com.sim.canteen.service.impl;
 
-import com.sim.canteen.dto.CustomerDto;
 import com.sim.canteen.dto.SimulationParametersDto;
 import com.sim.canteen.entity.CustomerEntity;
 import com.sim.canteen.enums.DishType;
