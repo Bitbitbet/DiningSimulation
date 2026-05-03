@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
 public interface CanteenSimulation {
     public void pauseSimulation();
 
-    public boolean resumeSimulation();
+    public void resumeSimulation();
 
     StatusResponse getStatus();
 

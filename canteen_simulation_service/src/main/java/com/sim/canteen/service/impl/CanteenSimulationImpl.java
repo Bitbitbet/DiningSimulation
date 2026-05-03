@@ -8,6 +8,7 @@ import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.entity.WindowEntity;
 import com.sim.canteen.enums.CustomerStatus;
 import com.sim.canteen.service.CanteenSimulation;
+import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Service
 public class CanteenSimulationImpl implements CanteenSimulation {
     static final int TICK_PER_SECOND = 10;
     private final Object pauseLock = new Object();
@@ -46,9 +48,9 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     private volatile double time;
 
     public CanteenSimulationImpl() {
-        // Start the worker thread
-        new Thread(this::simulationThreadRun);
         resetSimulation();
+        // Start the worker thread
+        new Thread(this::simulationThreadRun).start();
     }
 
     public void resetSimulation() {
@@ -67,15 +69,13 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     }
 
     @Override
-    public boolean resumeSimulation() {
+    public void resumeSimulation() {
         running = true;
         lastUpdate = Instant.now();
 
         synchronized (pauseLock) {
             pauseLock.notifyAll();
         }
-
-        return true;
     }
 
     @Override
