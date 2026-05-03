@@ -3,15 +3,19 @@ package com.sim.canteen.dto;
 import com.sim.canteen.enums.CustomerStatus;
 import com.sim.canteen.enums.DishType;
 
+import java.util.List;
 import java.util.Optional;
 
 public record CustomerDto(
         int id,
-        CustomerStatus status,
-        Optional<Integer> queuingWindowId,
+        int groupId,
+        int groupSize,
+
+        double simulatedDishPrepSeconds,
+        double simulatedEatTimeSeconds,
         double arriveTime,
-        double eatTime,
-        double dishPrepTime,
-        DishType orderType
+        DishType orderType,
+
+        CustomerStatus status,
 ) {
 }

@@ -82,7 +82,6 @@ type DashboardResponse = {
   parameters: SimulationParameters
 }
 
-
 const API_BASE = 'http://localhost:23456/api'
 
 const emptyDashboard: DashboardResponse = {
@@ -102,9 +101,9 @@ const emptyDashboard: DashboardResponse = {
   history: [],
   parameters: {
     simulationDurationMinutes: 180,
-    arrivalRate: 1.8,
+    arrivalRate: 0.6,
     dishRatio: 'A:40%, B:35%, C:25%',
-    averagePrepMinutes: 5.5,
+    averagePrepMinutes: 3.5,
     averageEatMinutes: 24,
     windowCount: 4,
     chefCount: 4,
@@ -113,11 +112,11 @@ const emptyDashboard: DashboardResponse = {
   },
 }
 
-
 export default function App() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [dashboard, setDashboard] = useState<DashboardResponse>(emptyDashboard)
   const [notice, setNotice] = useState('')
+  const [tickPerSecond, setTickPerSecond] = useState(1)
 
   const refreshAll = async () => {
     try {
@@ -134,11 +133,11 @@ export default function App() {
 
   useEffect(() => {
     refreshAll()
-    const timer = setInterval(refreshAll, 6000)
+    const timer = setInterval(refreshAll, 3000)
     return () => clearInterval(timer)
   }, [])
 
-  const callSimulation = async (path: string, method: 'POST' | 'PUT' = 'POST', body?: unknown) => {
+  const callSimulation = async (path: string, method: 'POST' | 'PUT' | 'DELETE' = 'POST', body?: unknown) => {
     const response = await fetch(`${API_BASE}${path}`, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -148,39 +147,105 @@ export default function App() {
     setDashboard(data)
   }
 
-  const saveParameters = async () => {
-    await callSimulation('/simulation/parameters', 'PUT', dashboard.parameters)
-    setNotice('参数已保存到当前仿真会话。')
+  const updateParam = <K extends keyof SimulationParameters>(key: K, value: SimulationParameters[K]) => {
+    setDashboard((prev) => ({
+      ...prev,
+      parameters: {
+        ...prev.parameters,
+        [key]: value,
+      },
+    }))
   }
 
-  const renderLine = (values: number[], denominator = 1) => (
-    <div className="mini-chart">
-      {values.map((value, index) => (
-        <div
-          key={`${value}-${index}`}
-          className="mini-bar"
-          style={{ height: `${18 + (value / denominator) * 72}px` }}
-          title={`${value}`}
+  const saveParameters = async () => {
+    await callSimulation('/simulation/parameters', 'PUT', dashboard.parameters)
+    setNotice('参数已保存，并重新生成当前仿真会话。')
+  }
+
+  const updateSpeed = async (value: number) => {
+    setTickPerSecond(value)
+    await callSimulation('/simulation/speed', 'PUT', { tickPerSecond: value })
+    setNotice(`仿真速度已调整为每秒 ${value} 次推进。`)
+  }
+
+  const clearRuntimeData = async () => {
+    await callSimulation('/datasets/clear', 'DELETE')
+    setNotice('已清空当前运行数据和数据库中的顾客事件、历史指标。')
+  }
+
+  const downloadDashboard = () => {
+    const blob = new Blob([JSON.stringify(dashboard, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `canteen-simulation-${Date.now()}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    setNotice('当前仿真数据已导出为 JSON 文件。')
+  }
+
+  const recentHistory = dashboard.history.slice(-10)
+
+  const renderLine = (values: number[], baseDenominator = 1) => {
+    const maxValue = Math.max(baseDenominator, ...values, 1)
+    return (
+      <div className="mini-chart">
+        {values.map((value, index) => {
+          const ratio = Math.max(0, Math.min(1, value / maxValue))
+          const height = 14 + ratio * 82
+          return (
+            <div
+              key={`${value}-${index}`}
+              className="mini-bar"
+              style={{ height: `${height}px` }}
+              title={`${value}`}
+            />
+          )
+        })}
+      </div>
+    )
+  }
+
+  const parameterInput = (
+    label: string,
+    key: keyof SimulationParameters,
+    unit: string,
+    options: { min?: number; max?: number; step?: number } = {},
+  ) => (
+    <label>
+      <span className="label-text">{label}</span>
+      <div className="input-with-unit">
+        <input
+          type="number"
+          min={options.min}
+          max={options.max}
+          step={options.step ?? 1}
+          value={String(dashboard.parameters[key])}
+          onChange={(e) => {
+            const nextValue = Number(e.target.value)
+            updateParam(key, nextValue as never)
+          }}
         />
-      ))}
-    </div>
+        <span className="input-unit">{unit}</span>
+      </div>
+    </label>
   )
 
   return (
     <div className="page-shell">
       <aside className="sidebar-card">
         <div>
-          <div className="brand-title">北平食堂大学</div>
-          <h1>就餐仿真系统</h1>
-          <p>开发阶段代码版本：保留数据面板与仿真控制功能。</p>
+          <div className="brand-title">北京交通大学</div>
+          <h1>食堂就餐仿真系统</h1>
+          <p>开发阶段版本：支持食堂就餐仿真、数据面板展示、仿真控制和运行数据保存。</p>
         </div>
         <nav className="nav-stack">
           <button className="nav-button active" type="button">数据面板</button>
         </nav>
         <div className="status-card">
           <span className={status?.online ? 'badge success' : 'badge danger'}>{status?.online ? '服务在线' : '服务离线'}</span>
-          <p>{status?.online ? '服务正在运行' : '服务当前不可用'}</p>
-          <button className="secondary-button" onClick={refreshAll}>刷新状态</button>
+          <p>{status?.online ? '后端服务正在运行' : '后端服务当前不可用'}</p>
+          <button className="secondary-button" type="button" onClick={refreshAll}>刷新状态</button>
         </div>
       </aside>
 
@@ -219,25 +284,24 @@ export default function App() {
             <div className="panel-head">
               <div>
                 <h3>历史指标趋势</h3>
-                <p>覆盖规格说明中要求的平均排队长度、等待时间、厨师利用率和座位周转率。</p>
               </div>
             </div>
             <div className="chart-group">
               <div className="chart-card">
                 <span>平均排队长度</span>
-                {renderLine(dashboard.history.map((item) => item.queueLength), 10)}
+                {renderLine(recentHistory.map((item) => item.queueLength), 10)}
               </div>
               <div className="chart-card">
                 <span>顾客等待时间</span>
-                {renderLine(dashboard.history.map((item) => item.waitMinutes), 20)}
+                {renderLine(recentHistory.map((item) => item.waitMinutes), 20)}
               </div>
               <div className="chart-card">
                 <span>厨师利用率</span>
-                {renderLine(dashboard.history.map((item) => item.chefUtilization), 1)}
+                {renderLine(recentHistory.map((item) => item.chefUtilization), 1)}
               </div>
               <div className="chart-card">
                 <span>座位周转率</span>
-                {renderLine(dashboard.history.map((item) => item.seatTurnoverRate), 4)}
+                {renderLine(recentHistory.map((item) => item.seatTurnoverRate), 4)}
               </div>
             </div>
           </div>
@@ -246,110 +310,109 @@ export default function App() {
             <div className="panel-head compact">
               <div>
                 <h3>仿真数据管理</h3>
-                <p>支持暂停、继续、重置仿真和调整参数。</p>
+                <p>管理已生成的仿真数据，支持选择、下载、刷新和清空。</p>
               </div>
             </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>数据名称</th>
+                    <th>来源</th>
+                    <th>记录数</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>当前运行数据</td>
+                    <td>本次仿真</td>
+                    <td>{dashboard.recentCustomers.length}</td>
+                    <td><button className="secondary-button" type="button" onClick={() => setNotice('已选择当前运行数据。')}>选择</button></td>
+                  </tr>
+                  <tr>
+                    <td>历史指标数据</td>
+                    <td>后端统计</td>
+                    <td>{dashboard.history.length}</td>
+                    <td><button className="secondary-button" type="button" onClick={() => setNotice('已选择历史指标数据。')}>选择</button></td>
+                  </tr>
+                  <tr>
+                    <td>窗口队列数据</td>
+                    <td>仿真窗口</td>
+                    <td>{dashboard.windows.length}</td>
+                    <td><button className="secondary-button" type="button" onClick={() => setNotice('已选择窗口队列数据。')}>选择</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
             <div className="action-row wrap">
-              <button className="primary-button" onClick={() => callSimulation('/simulation/start')}>开始</button>
-              <button className="secondary-button" onClick={() => callSimulation('/simulation/pause')}>暂停</button>
-              <button className="secondary-button" onClick={() => callSimulation('/simulation/reset')}>重置</button>
+              <button className="primary-button" type="button" onClick={() => setNotice('上传数据功能后续接入。')}>上传数据</button>
+              <button className="secondary-button" type="button" onClick={downloadDashboard}>下载数据</button>
+              <button className="secondary-button" type="button" onClick={refreshAll}>刷新数据</button>
+              <button className="secondary-button danger-button" type="button" onClick={clearRuntimeData}>清空数据</button>
             </div>
-            <div className="parameter-grid">
-              <label>
-                <span className="label-text">仿真总时长</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.simulationDurationMinutes} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, simulationDurationMinutes: Number(e.target.value) } }))} />
-                  <span className="input-unit">分钟</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">顾客到达率</span>
-                <div className="input-with-unit">
-                  <input type="number" step="0.1" value={dashboard.parameters.arrivalRate} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, arrivalRate: Number(e.target.value) } }))} />
-                  <span className="input-unit">人/分钟</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">窗口数量</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.windowCount} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, windowCount: Number(e.target.value) } }))} />
-                  <span className="input-unit">个</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">厨师数量</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.chefCount} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, chefCount: Number(e.target.value) } }))} />
-                  <span className="input-unit">人</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">座位数量</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.seatCount} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, seatCount: Number(e.target.value) } }))} />
-                  <span className="input-unit">个</span>
-                </div>
-              </label>
-            </div>
-            <button className="primary-button full" onClick={saveParameters}>保存仿真参数</button>
           </div>
+
           <div className="panel-card">
             <div className="panel-head compact">
               <div>
                 <h3>仿真控制</h3>
-                <p>支持暂停、继续、重置仿真和调整参数。</p>
+                <p>控制仿真开始、暂停、重置，并调整仿真速度与参数。</p>
               </div>
             </div>
             <div className="action-row wrap">
-              <button className="primary-button" onClick={() => callSimulation('/simulation/start')}>开始</button>
-              <button className="secondary-button" onClick={() => callSimulation('/simulation/pause')}>暂停</button>
-              <button className="secondary-button" onClick={() => callSimulation('/simulation/reset')}>重置</button>
+              <button className="primary-button" type="button" onClick={() => callSimulation('/simulation/start')}>开始</button>
+              <button className="secondary-button" type="button" onClick={() => callSimulation('/simulation/pause')}>暂停</button>
+              <button className="secondary-button" type="button" onClick={() => callSimulation('/simulation/reset')}>重置</button>
             </div>
+
+            <label className="range-label">
+              <span className="label-text">仿真速度：每秒 {tickPerSecond} 次推进</span>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={tickPerSecond}
+                onChange={(e) => updateSpeed(Number(e.target.value))}
+              />
+            </label>
+
             <div className="parameter-grid">
+              {parameterInput('仿真总时长', 'simulationDurationMinutes', '分钟', { min: 1, step: 1 })}
+              {parameterInput('顾客到达率', 'arrivalRate', '人/分钟', { min: 0.01, step: 0.05 })}
+              {parameterInput('厨师平均做餐时间', 'averagePrepMinutes', '分钟/人', { min: 0.1, step: 0.1 })}
+              {parameterInput('顾客平均就餐时间', 'averageEatMinutes', '分钟', { min: 1, step: 0.5 })}
+              {parameterInput('窗口数量', 'windowCount', '个', { min: 1, step: 1 })}
+              {parameterInput('厨师数量', 'chefCount', '人', { min: 1, step: 1 })}
+              {parameterInput('座位数量', 'seatCount', '个', { min: 1, step: 1 })}
               <label>
-                <span className="label-text">仿真总时长</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.simulationDurationMinutes} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, simulationDurationMinutes: Number(e.target.value) } }))} />
-                  <span className="input-unit">分钟</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">顾客到达率</span>
-                <div className="input-with-unit">
-                  <input type="number" step="0.1" value={dashboard.parameters.arrivalRate} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, arrivalRate: Number(e.target.value) } }))} />
-                  <span className="input-unit">人/分钟</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">窗口数量</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.windowCount} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, windowCount: Number(e.target.value) } }))} />
-                  <span className="input-unit">个</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">厨师数量</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.chefCount} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, chefCount: Number(e.target.value) } }))} />
-                  <span className="input-unit">人</span>
-                </div>
-              </label>
-              <label>
-                <span className="label-text">座位数量</span>
-                <div className="input-with-unit">
-                  <input type="number" value={dashboard.parameters.seatCount} onChange={(e) => setDashboard((prev) => ({ ...prev, parameters: { ...prev.parameters, seatCount: Number(e.target.value) } }))} />
-                  <span className="input-unit">个</span>
-                </div>
+                <span className="label-text">餐品比例</span>
+                <input
+                  type="text"
+                  value={dashboard.parameters.dishRatio}
+                  onChange={(e) => updateParam('dishRatio', e.target.value)}
+                  placeholder="A:40%, B:35%, C:25%"
+                />
               </label>
             </div>
-            <button className="primary-button full" onClick={saveParameters}>保存仿真参数</button>
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={dashboard.parameters.autoLeaveWhenFull}
+                onChange={(e) => updateParam('autoLeaveWhenFull', e.target.checked)}
+              />
+              <span>满座时顾客自动离开</span>
+            </label>
+            <button className="primary-button full" type="button" onClick={saveParameters}>保存仿真参数</button>
           </div>
 
           <div className="panel-card large">
             <div className="panel-head compact">
               <div>
                 <h3>最近顾客事件流</h3>
-                <p>展示到达、排队、就餐与离场的关键状态，满足“事件流”开发要求。</p>
+                <p>展示最近最多 100 条到达、排队、就餐与离场事件；数据库不受该前端显示数量限制。</p>
               </div>
             </div>
             <div className="table-wrap">
@@ -361,6 +424,7 @@ export default function App() {
                     <th>窗口</th>
                     <th>排队开始</th>
                     <th>排队结束</th>
+                    <th>实际等待</th>
                     <th>状态</th>
                   </tr>
                 </thead>
@@ -372,6 +436,7 @@ export default function App() {
                       <td>{customer.windowId}</td>
                       <td>{customer.queueStart}</td>
                       <td>{customer.queueEnd}</td>
+                      <td>{Math.max(0, customer.queueEnd - customer.queueStart).toFixed(1)}</td>
                       <td>{customer.status}</td>
                     </tr>
                   ))}

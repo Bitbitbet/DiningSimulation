@@ -8,7 +8,8 @@ import java.util.Map;
 public record SimulationParametersDto(
         int simulationTotalMinutes,
 
-        double customerArrivalRate,
+        double customerArriveRate,
+        Map<Integer, Integer> customerGroupSizeRatio,
         Map<DishType, Integer> customerDishRatio,
 
         double customerEatTimeAvg,
@@ -17,8 +18,7 @@ public record SimulationParametersDto(
         double dishPrepTimeAvg,
         double dishPrepTimeStdVar,
 
-        List<DishType> windows,
-        int chefCount,
+        List<WindowParameterDto> windows,
         int seatCount
 ) {
 }

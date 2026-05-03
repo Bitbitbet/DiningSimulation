@@ -1,8 +1,12 @@
 package com.sim.canteen.dto;
 
-import java.util.Optional;
+import java.util.List;
 
-public record SeatDto (
-    int id,
-    Optional<Integer> customer
-) {}
+/*
+ * 一个四座的座位
+ **/
+public record SeatDto(
+        List<Integer> customer
+) {
+    public static final int SEAT_SIZE = 4;
+}

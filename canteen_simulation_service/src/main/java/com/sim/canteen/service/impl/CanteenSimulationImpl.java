@@ -1,32 +1,31 @@
 package com.sim.canteen.service.impl;
 
 import com.sim.canteen.dto.*;
+import com.sim.canteen.entity.CustomerEntity;
+import com.sim.canteen.entity.WindowEntity;
 import com.sim.canteen.service.CanteenSimulation;
-import com.sim.canteen.simulationData.SimulationData;
+import jakarta.annotation.Nullable;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 
 public class CanteenSimulationImpl implements CanteenSimulation {
-    private volatile boolean running = false;
-    private volatile boolean shutdown = false;
-    private final Object pauseLock = new Object();
-
     static final int TICK_PER_SECOND = 10;
-
+    private final Object pauseLock = new Object();
     // 仿真历史
     private final List<HistoryPoint> history = new ArrayList<>();
-    // 窗口模拟数据
-    private final List<WindowDto> windows = new ArrayList<>();
-    // 厨师模拟数据
-    private final List<ChefDto> chefs = new ArrayList<>();
-    // 座位模拟数据
-    private final List<SeatDto> seats = new ArrayList<>();
-    // 顾客模拟数据
-    private final List<CustomerDto> customers = new ArrayList<>();
+    // 窗口实体
+    private final List<WindowEntity> windows = new ArrayList<>();
+    // 顾客实体
+    private final HashMap<Integer, CustomerEntity> customers = new HashMap<>();
+    // 顾客组索引
+    private final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
 
-    private final SimulationData simulationData = new SimulationData();
+    private volatile boolean running = false;
+    private volatile boolean shutdown = false;
+
+    private SimulationData simulationData = null;
 
     private volatile double simulationSpeed;
 
@@ -70,26 +69,21 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     }
 
     @Override
-    public void getDashboardResponse() {}
+    public synchronized void getDashboardResponse() {
+    }
 
     @Override
     public void selectSimulationData(SimulationParametersDto parameters) {
         this.windows.clear();
-        for(int i = 0; i < parameters.windowCount(); ++i) {
-            this.windows.add(new CanteenWindow(i));
-        }
-
-        this.chefs.clear();
-        for(int i = 0; i < parameters.chefCount(); ++i) {
-            this.chefs.add(new ChefDto(i, Optional.empty(), Optional.empty()));
-        }
-
-        this.seats.clear();
-        for(int i = 0; i < parameters.seatCount(); ++i) {
-            this.seats.add(new SeatDto(i, Optional.empty()));
+        for (var w : parameters.windows()) {
+            this.windows.add(
+                    new WindowEntity(w.dishType(),
+                    w.windowPrepTimeModifier(),
+                    new ArrayList<>())
+            );
         }
         this.customers.clear();
-        this.simulationData.select(parameters);
+        this.simulationData = new SimulationData(parameters);
     }
 
     @Override
@@ -103,13 +97,10 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
     private void simulationThreadRun() {
         // 工作线程主循环
-        while(true) {
+        while (true) {
             try {
                 var TIME = 1_000_000_000 / TICK_PER_SECOND;
-                var millis = TIME % 1000;
-                var nanos = TIME / 1000;
-                Thread.sleep(millis, nanos);
-
+                Thread.sleep(Duration.ofNanos(TIME));
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 return;
@@ -137,20 +128,26 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     }
 
 
-    private void simulationThreadTick() {
-        var timeLeap = Duration.between(Instant.now(),lastUpdate).toNanos() * simulationSpeed;
+    private synchronized void simulationThreadTick() {
+        var timeLeap = Duration.between(Instant.now(), lastUpdate).toNanos() * simulationSpeed;
         time += timeLeap;
         var newCustomers = simulationData.next_until(time);
         // 新顾客，加到结尾，窗口排队
-        for(var customer: newCustomers) {
-            var minWindow = this.windows.stream()
-                    .min(Comparator.comparingInt(a -> a.queue.size())).get();
-            minWindow.queue.add(customer.id());
-            customers.add(customer);
+        for (var customerGroup : newCustomers) {
+            for (var customer: customerGroup) {
+                customers.put(customer.id, customer);
+                var minWindow = this.windows.stream()
+                        .filter(windowEntity -> windowEntity.dishType == customer.orderType)
+                        .min(Comparator.comparingInt(a -> a.queue.size())).get();
+                minWindow.queue.add(customer.id);
+
+                customerGroups.putIfAbsent(customer.groupId, new ArrayList<>());
+                customerGroups.get(customer.groupId).add(customer.id);
+            }
         }
 
-        // 处理窗口，检查已完成的餐品
-
+        // 处理窗口的第一位
+        
     }
 
     @Override

@@ -16,7 +16,6 @@ public record DashboardResponse(
         double seatIdleRate,
         double congestionRate,
         List<WindowDto> windows,
-        List<ChefDto> chefs,
         List<SeatDto> seats,
         List<CustomerDto> recentCustomers,
         List<Map<String, Object>> history,
