@@ -15,6 +15,7 @@ public class SimulationData {
     public int id;
     public String name;
     public SimulationParametersDto para;
+    public boolean finished = false;
 
     public double time = 0;
 

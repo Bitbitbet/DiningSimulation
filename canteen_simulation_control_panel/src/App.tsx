@@ -97,7 +97,7 @@ const initialParameters: BackendSimulationParameters = {
   seatCount: 24,
 }
 
-function normalizeState(state?: string) {
+function localizedState(state?: string) {
   if (!state) return '未知'
 
   const lower = state.toLowerCase()
@@ -406,35 +406,35 @@ function App() {
   }
 
   const selectSimulationData = async (id: number) => {
-  setLoading(true)
+    setLoading(true)
 
-  try {
-    // 先按 query 参数形式请求：/api/data/select?id=0
-    let response = await fetch(`${API_BASE}/data/select?id=${id}`, {
-      method: 'POST',
-    })
-
-    // 如果 query 参数形式不行，再尝试路径参数形式：/api/data/select/0
-    if (!response.ok) {
-      response = await fetch(`${API_BASE}/data/select/${id}`, {
+    try {
+      // 先按 query 参数形式请求：/api/data/select?id=0
+      let response = await fetch(`${API_BASE}/data/select?id=${id}`, {
         method: 'POST',
       })
-    }
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      setNotice(`选择数据失败：${response.status} ${errorText}`)
-      return
-    }
+      // 如果 query 参数形式不行，再尝试路径参数形式：/api/data/select/0
+      if (!response.ok) {
+        response = await fetch(`${API_BASE}/data/select/${id}`, {
+          method: 'POST',
+        })
+      }
 
-    setNotice(`已选择仿真数据：${id}`)
-    await refreshAll()
-  } catch {
-    setNotice('选择数据失败，请检查后端 /api/data/select 接口。')
-  } finally {
-    setLoading(false)
+      if (!response.ok) {
+        const errorText = await response.text()
+        setNotice(`选择数据失败：${response.status} ${errorText}`)
+        return
+      }
+
+      setNotice(`已选择仿真数据：${id}`)
+      await refreshAll()
+    } catch {
+      setNotice('选择数据失败，请检查后端 /api/data/select 接口。')
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   const downloadDashboard = () => {
     const content = JSON.stringify(
@@ -1026,7 +1026,7 @@ function App() {
 
             <div className="hero-actions">
               <span className="time-chip">当前仿真时钟：{currentTimeMinute} 分钟</span>
-              <span className="time-chip">状态：{normalizeState(dashboard.simulationState || status.simulationState)}</span>
+              <span className="time-chip">状态：{localizedState(dashboard.simulationState || status.simulationState)}</span>
             </div>
           </header>
 

@@ -4,6 +4,7 @@ import com.sim.canteen.dto.request.SimulationParametersDto;
 import com.sim.canteen.dto.response.DashboardResponse;
 import com.sim.canteen.dto.response.SimulationDataQueryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
+import com.sim.canteen.enums.ResumeSimulationRst;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.service.SimulationDataManager;
 import org.springframework.http.ResponseEntity;
@@ -43,10 +44,12 @@ public class CanteenController {
 
     @PostMapping("/simulation/resume")
     public ResponseEntity<DashboardResponse> resumeSimulation() {
-        if(!canteenSimulation.resumeSimulation()) {
-            return ResponseEntity.badRequest().build();
-        }
-        return ResponseEntity.ok(canteenSimulation.getDashboardResponse());
+        return switch(canteenSimulation.resumeSimulation()) {
+            case ResumeSimulationRst.dataNotReady -> ResponseEntity.badRequest().build();
+            case ResumeSimulationRst.simulationFinished -> ResponseEntity
+                    .badRequest().body(canteenSimulation.getDashboardResponse());
+            case ResumeSimulationRst.success -> ResponseEntity.ok(canteenSimulation.getDashboardResponse());
+        };
     }
 
     @PostMapping("/data/new")

@@ -5,6 +5,7 @@ import com.sim.canteen.dto.response.HistoryPointDto;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.enums.CustomerState;
+import com.sim.canteen.enums.ResumeSimulationRst;
 import com.sim.canteen.enums.SimulationState;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.simulation.CustomerArrival;
@@ -51,9 +52,12 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     }
 
     @Override
-    public boolean resumeSimulation() {
+    public ResumeSimulationRst resumeSimulation() {
         if (data == null) {
-            return false;
+            return ResumeSimulationRst.dataNotReady;
+        }
+        if(data.finished) {
+            return ResumeSimulationRst.simulationFinished;
         }
         running = true;
         lastUpdate = Instant.now();
@@ -62,7 +66,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             pauseLock.notifyAll();
         }
 
-        return true;
+        return ResumeSimulationRst.success;
     }
 
     @Override
@@ -140,8 +144,16 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
             var timeLeap = ((double) Duration.between(lastUpdate, Instant.now()).toNanos() / 1_000_000_000) * simulationSpeed;
             data.time += timeLeap;
+            boolean finished = false;
+            if(data.time >= data.para.simulationTotalMinutes() * 60) {
+                data.time = data.para.simulationTotalMinutes() * 60;
+                finished = true;
+            }
             simulationThreadTick();
             lastUpdate = Instant.now();
+            if(finished) {
+                running = false;
+            }
         }
     }
 
