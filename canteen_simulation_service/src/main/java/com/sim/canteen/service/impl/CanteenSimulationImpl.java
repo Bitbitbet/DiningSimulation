@@ -73,7 +73,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     public synchronized DashboardResponse getDashboardResponse() {
         var simulationState = running ? SimulationState.started :
                 (shutdown || data == null ? SimulationState.pending : SimulationState.paused);
-        
+
         return new DashboardResponse(
                 simulationState,
                 new ArrayList<>(data.historyPoints),
