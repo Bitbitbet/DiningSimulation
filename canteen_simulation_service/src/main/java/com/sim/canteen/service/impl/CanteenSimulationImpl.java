@@ -218,7 +218,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     if (customer.eatEndTime <= data.time) {
                         // 检查组，删除组
                         var group = data.customerGroups.get(customer.groupId);
-                        group.remove(customer.id);
+                        group.remove(Integer.valueOf(customer.id));
                         if (group.isEmpty()) {
                             data.customerGroups.remove(customer.groupId);
                         }
