@@ -114,7 +114,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
             // 检查运行状态
             synchronized (pauseLock) {
-                while (!running || !shutdown) {
+                while (!running && !shutdown) {
                     try {
                         pauseLock.wait();
                     } catch (InterruptedException e) {
@@ -128,7 +128,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 return;
             }
 
-            var timeLeap = Duration.between(Instant.now(), lastUpdate).toNanos() * simulationSpeed;
+            var timeLeap = Duration.between(lastUpdate, Instant.now()).toNanos() * simulationSpeed;
             data.time += timeLeap;
             simulationThreadTick();
             lastUpdate = Instant.now();

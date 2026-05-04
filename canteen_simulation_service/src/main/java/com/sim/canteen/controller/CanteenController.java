@@ -6,11 +6,8 @@ import com.sim.canteen.dto.response.SimulationDataQueryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.service.SimulationDataManager;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
 
@@ -45,17 +42,21 @@ public class CanteenController {
     }
 
     @PostMapping("/simulation/resume")
-    public DashboardResponse resumeSimulation() {
-        canteenSimulation.pauseSimulation();
-        return canteenSimulation.getDashboardResponse();
+    public ResponseEntity<DashboardResponse> resumeSimulation() {
+        if(!canteenSimulation.resumeSimulation()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(canteenSimulation.getDashboardResponse());
     }
 
     @PostMapping("/data/new")
-    public SimulationDataQueryResponse newSimulationData(
+    public ResponseEntity<SimulationDataQueryResponse> newSimulationData(
             @RequestBody SimulationParametersDto parameters,
-            Optional<String> name) {
-        simulationDataManager.newSimulationData(parameters, name);
-        return simulationDataManager.querySimulationDataList();
+            @RequestParam(value = "name", required = false) Optional<String> name) {
+        if(!simulationDataManager.newSimulationData(parameters, name)) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(simulationDataManager.querySimulationDataList());
     }
 
     @GetMapping("/data/query")
@@ -63,9 +64,19 @@ public class CanteenController {
         return simulationDataManager.querySimulationDataList();
     }
 
-    @PostMapping("/data/select")
-    public SimulationDataQueryResponse selectSimulationData(int id) {
-        simulationDataManager.selectSimulationData(id);
-        return simulationDataManager.querySimulationDataList();
+    @PostMapping("/data/select/{id}")
+    public ResponseEntity<SimulationDataQueryResponse> selectSimulationData(@PathVariable int id) {
+        if(!simulationDataManager.selectSimulationData(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(simulationDataManager.querySimulationDataList());
+    }
+
+    @PostMapping("/data/delete/{id}")
+    public ResponseEntity<SimulationDataQueryResponse> deleteSimulationData(@PathVariable int id) {
+        if(!simulationDataManager.deleteSimulationData(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(simulationDataManager.querySimulationDataList());
     }
 }

@@ -3,6 +3,7 @@ package com.sim.canteen.service.impl;
 import com.sim.canteen.dto.request.SimulationParametersDto;
 import com.sim.canteen.dto.response.SimulationDataDto;
 import com.sim.canteen.dto.response.SimulationDataQueryResponse;
+import com.sim.canteen.enums.DishType;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.service.SimulationDataManager;
 import com.sim.canteen.simulation.SimulationData;
@@ -27,7 +28,10 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
     }
 
     @Override
-    public void newSimulationData(SimulationParametersDto parameters, Optional<String> name) {
+    public boolean newSimulationData(SimulationParametersDto parameters, Optional<String> name) {
+        if(!validateSimulationParameters(parameters)) {
+            return false;
+        }
         var id = simulatedDataIdGenerator++;
         var data = new SimulationData(
                 id,
@@ -37,6 +41,58 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         data.id = id;
         data.para = parameters;
         datas.put(id, data);
+
+        return true;
+    }
+
+    private boolean validateSimulationParameters(SimulationParametersDto parameters) {
+        if(parameters.simulationTotalMinutes() <= 0) {
+            return false;
+        }
+        if(parameters.customerArriveRate() <= 0) {
+            return false;
+        }
+        if(!parameters.customerGroupSizeRatio().containsKey(1)) {
+            return false;
+        }
+        if(!parameters.customerGroupSizeRatio().containsKey(2)) {
+            return false;
+        }
+        if(!parameters.customerGroupSizeRatio().containsKey(3)) {
+            return false;
+        }
+        if(!parameters.customerGroupSizeRatio().containsKey(4)) {
+            return false;
+        }
+        if(!parameters.customerDishRatio().containsKey(DishType.A)) {
+            return false;
+        }
+        if(!parameters.customerDishRatio().containsKey(DishType.B)) {
+            return false;
+        }
+        if(!parameters.customerDishRatio().containsKey(DishType.C)) {
+            return false;
+        }
+        if(parameters.customerEatTimeAvg() <= 0) {
+            return false;
+        }
+        if(parameters.customerEatTimeStdVar() <= 0) {
+            return false;
+        }
+        if(parameters.dishPrepTimeAvg() <= 0) {
+            return false;
+        }
+        if(parameters.dishPrepTimeStdVar() <= 0) {
+            return false;
+        }
+        if(!parameters.windows().stream().allMatch(windowPa -> windowPa.windowPrepTimeModifier() > 0)) {
+            return false;
+        }
+        if(parameters.seatCount() <= 0) {
+            return false;
+        }
+
+        return true;
     }
 
     @Override
