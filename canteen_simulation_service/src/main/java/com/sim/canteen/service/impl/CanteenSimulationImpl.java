@@ -287,13 +287,14 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     for (var inGroupCustomerId : data.customerGroups.get(customer.groupId)) {
                         var inGroupCustomer = data.customers.get(inGroupCustomerId);
                         seat.customers.add(inGroupCustomerId);
+                        inGroupCustomer.seatId = seat.id;
                         inGroupCustomer.state = CustomerState.Eating;
                         inGroupCustomer.eatEndTime = seatFreeSince + inGroupCustomer.simulatedEatTimeSeconds;
                         var waitForSeatSeconds = seatFreeSince - inGroupCustomer.startWaitingForSeatTime;
 
                         // 累积计算顾客等待座位时长的平均
                         data.customerWaitSeatSecAvg =
-                                (data.customerWaitSeatSampleCnt * data.customerWaitSeatSampleCnt + waitForSeatSeconds)
+                                (data.customerWaitSeatSecAvg * data.customerWaitSeatSampleCnt + waitForSeatSeconds)
                                         / (data.customerWaitSeatSampleCnt + 1);
                         data.customerWaitSeatSampleCnt += 1;
                     }
