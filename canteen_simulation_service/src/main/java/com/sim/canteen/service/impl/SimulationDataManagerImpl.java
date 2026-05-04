@@ -85,7 +85,24 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         if(parameters.dishPrepTimeStdVar() <= 0) {
             return false;
         }
-        if(!parameters.windows().stream().allMatch(windowPa -> windowPa.windowPrepTimeModifier() > 0)) {
+        if(!parameters.windows()
+                .stream()
+                .allMatch(windowPa -> windowPa.windowPrepTimeModifier() > 0)) {
+            return false;
+        }
+        if(parameters.windows()
+                .stream()
+                .noneMatch(windowPa -> windowPa.dishType().equals(DishType.A))) {
+            return false;
+        }
+        if(parameters.windows()
+                .stream()
+                .noneMatch(windowPa -> windowPa.dishType().equals(DishType.B))) {
+            return false;
+        }
+        if(parameters.windows()
+                .stream()
+                .noneMatch(windowPa -> windowPa.dishType().equals(DishType.C))) {
             return false;
         }
         if(parameters.seatCount() <= 0) {
