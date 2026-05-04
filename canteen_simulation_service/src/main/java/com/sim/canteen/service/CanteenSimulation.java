@@ -1,21 +1,19 @@
 package com.sim.canteen.service;
 
-import com.sim.canteen.dto.DashboardResponse;
-import com.sim.canteen.dto.SimulationParametersDto;
-import com.sim.canteen.dto.StatusResponse;
+import com.sim.canteen.dto.request.SimulationParametersDto;
+import com.sim.canteen.dto.response.DashboardResponse;
+import com.sim.canteen.dto.response.StatusResponse;
+import com.sim.canteen.simulation.SimulationData;
 import org.springframework.stereotype.Service;
 
 @Service
 public interface CanteenSimulation {
     public void pauseSimulation();
-
-    public void resumeSimulation();
+    public boolean resumeSimulation();
+    public void shutdown();
+    public void setSimulationData(SimulationData simulationData);
 
     StatusResponse getStatus();
 
-    public void getDashboardResponse();
-
-    public void selectSimulationData(SimulationParametersDto parameters);
-
-    public void shutdown();
+    public DashboardResponse getDashboardResponse();
 }

@@ -1,4 +1,4 @@
-package com.sim.canteen.dto;
+package com.sim.canteen.dto.request;
 
 import com.sim.canteen.enums.DishType;
 
@@ -18,7 +18,7 @@ public record SimulationParametersDto(
         double dishPrepTimeAvg,
         double dishPrepTimeStdVar,
 
-        List<WindowParameterDto> windows,
+        List<WindowParametersDto> windows,
         int seatCount
 ) {
 }

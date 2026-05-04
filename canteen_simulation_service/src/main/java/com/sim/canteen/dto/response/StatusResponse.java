@@ -1,4 +1,4 @@
-package com.sim.canteen.dto;
+package com.sim.canteen.dto.response;
 
 public record StatusResponse(
         boolean online

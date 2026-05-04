@@ -1,8 +1,20 @@
+/*
+ * 顾客的生命周期：
+ * 1. Queuing，由arriveTime开始，到排在队列第一个的时候结束
+ * 2. WaitingForDish, 排在队列第一个的时候开始，dishPrepEndTime的时候结束
+ * 3. WaitingForGroup, dishPrepEndTime的时候开始，
+ *           其他组员都进入WaitingForGroup的状态时结束（startWaitingForSeatTime）
+ * 4. WaitingForSeat, 所有组员都进入WaitingForGroup的时候开始（startWaitingForSeatTime），
+ *           有空闲的位子时结束
+ * 5. Eating，到eatEndTime的时候结束。
+ * */
+
 package com.sim.canteen.entity;
 
-import com.sim.canteen.dto.CustomerDto;
+import com.sim.canteen.dto.response.CustomerDto;
 import com.sim.canteen.enums.CustomerState;
 import com.sim.canteen.enums.DishType;
+
 
 public class CustomerEntity {
     public final int id;
@@ -14,7 +26,7 @@ public class CustomerEntity {
     public final double arriveTime;
     public final DishType orderType;
 
-    public CustomerState status;
+    public CustomerState state;
 
     /**
      * 当status == CustomerStatus.WaitingForDish
@@ -54,7 +66,7 @@ public class CustomerEntity {
         this.arriveTime = arriveTime;
         this.orderType = orderType;
 
-        this.status = CustomerState.Queuing;
+        this.state = CustomerState.Queuing;
     }
 
     public CustomerDto dto() {
@@ -66,7 +78,7 @@ public class CustomerEntity {
                 simulatedEatTimeSeconds,
                 arriveTime,
                 orderType,
-                status
+                state
         );
     }
 }

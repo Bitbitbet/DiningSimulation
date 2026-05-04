@@ -1,4 +1,4 @@
-package com.sim.canteen.dto;
+package com.sim.canteen.dto.response;
 
 import com.sim.canteen.enums.CustomerState;
 import com.sim.canteen.enums.DishType;

@@ -1,6 +1,7 @@
 package com.sim.canteen.entity;
 
-import com.sim.canteen.dto.SeatDto;
+
+import com.sim.canteen.dto.response.SeatDto;
 
 import java.util.List;
 

@@ -1,6 +1,6 @@
 package com.sim.canteen.entity;
 
-import com.sim.canteen.dto.WindowDto;
+import com.sim.canteen.dto.response.WindowDto;
 import com.sim.canteen.enums.DishType;
 
 import java.util.List;
@@ -25,7 +25,6 @@ public class WindowEntity {
     public WindowDto dto() {
         return new WindowDto(
                 dishType,
-                windowPrepTimeModifier,
                 queue
         );
     }
