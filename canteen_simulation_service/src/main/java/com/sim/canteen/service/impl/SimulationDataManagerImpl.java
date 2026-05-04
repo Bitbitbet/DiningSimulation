@@ -52,6 +52,10 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         if(parameters.customerArriveRate() <= 0) {
             return false;
         }
+
+        if(parameters.customerGroupSizeRatio().size() != 4) {
+            return false;
+        }
         if(!parameters.customerGroupSizeRatio().containsKey(1)) {
             return false;
         }
@@ -62,6 +66,10 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
             return false;
         }
         if(!parameters.customerGroupSizeRatio().containsKey(4)) {
+            return false;
+        }
+
+        if(parameters.customerDishRatio().size() != 3) {
             return false;
         }
         if(!parameters.customerDishRatio().containsKey(DishType.A)) {

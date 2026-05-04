@@ -1,6 +1,5 @@
 package com.sim.canteen.simulation;
 
-import com.sim.canteen.dto.request.SimulationParametersDto;
 import com.sim.canteen.entity.CustomerEntity;
 import com.sim.canteen.enums.DishType;
 
@@ -11,24 +10,23 @@ import java.util.stream.Collectors;
 
 public class CustomerArrival {
     /**
-     * @param time 指定的时间节点
      * @return 在这个时间节点之前新到达的所有顾客
      */
-    public static List<List<CustomerEntity>> next_until(SimulationData data, double time) {
-        while(data.nextCustomerGrpTime < time) {
+    public static List<List<CustomerEntity>> next_until(SimulationData data) {
+        while(data.nextCustomerGrpTime < data.time) {
             data.nextCustomerGrpTime += -Math.log(Math.random()) / data.customerGroupArriveRate;
             data.customerArriveTimes.add(data.nextCustomerGrpTime);
         }
         var map = data.customerArriveTimes
                 .stream()
-                .collect(Collectors.partitioningBy((i -> i <= time)));
+                .collect(Collectors.partitioningBy((i -> i <= data.time)));
 
         // 把指定时间之后的顾客到达时间存起来
         data.customerArriveTimes = map.get(false);
 
         return map.get(true)
                 .stream()
-                .map(arriveTime -> CustomerArrival.newCustomerGroup(data, arriveTime))
+                .map(arriveTime -> newCustomerGroup(data, arriveTime))
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 

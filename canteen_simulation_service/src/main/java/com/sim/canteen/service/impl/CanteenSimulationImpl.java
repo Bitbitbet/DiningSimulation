@@ -75,6 +75,15 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         var simulationState = running ? SimulationState.started :
                 (shutdown || data == null ? SimulationState.pending : SimulationState.paused);
 
+        if(data == null) {
+            return new DashboardResponse(
+                    simulationState,
+                    List.of(),
+                    List.of(),
+                    List.of()
+            );
+        }
+
         return new DashboardResponse(
                 simulationState,
                 new ArrayList<>(data.historyPoints),
@@ -138,7 +147,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
 
     private synchronized void simulationThreadTick() {
-        var newCustomers = CustomerArrival.next_until(data, data.time);
+        var newCustomers = CustomerArrival.next_until(data);
         // 新顾客，加到结尾，窗口排队
         for (var customerGroup : newCustomers) {
             for (var customer : customerGroup) {
