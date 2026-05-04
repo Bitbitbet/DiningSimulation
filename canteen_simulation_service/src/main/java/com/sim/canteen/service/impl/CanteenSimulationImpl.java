@@ -138,7 +138,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 return;
             }
 
-            var timeLeap = Duration.between(lastUpdate, Instant.now()).toNanos() * simulationSpeed;
+            var timeLeap = ((double) Duration.between(lastUpdate, Instant.now()).toNanos() / 1_000_000_000) * simulationSpeed;
             data.time += timeLeap;
             simulationThreadTick();
             lastUpdate = Instant.now();

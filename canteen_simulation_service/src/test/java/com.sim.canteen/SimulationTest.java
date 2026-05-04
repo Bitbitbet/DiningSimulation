@@ -9,11 +9,13 @@ import com.sim.canteen.dto.response.SimulationDataQueryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.enums.DishType;
 import com.sim.canteen.enums.SimulationState;
+import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.service.impl.CanteenSimulationImpl;
 import com.sim.canteen.service.impl.SimulationDataManagerImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.HashMap;
@@ -25,19 +27,21 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 public class SimulationTest {
+    @Mock
+    private CanteenSimulation canteenSimulation;
     @InjectMocks
-    private CanteenSimulationImpl canteenSimulation;
+    private CanteenSimulationImpl canteenSimulationImpl;
     @InjectMocks
-    private SimulationDataManagerImpl simulationDataManager;
+    private SimulationDataManagerImpl simulationDataManagerImpl;
 
     @Test
     public void statusResponseTest() {
-        assertThat(canteenSimulation.getStatus()).isEqualTo(new StatusResponse(true));
+        assertThat(canteenSimulationImpl.getStatus()).isEqualTo(new StatusResponse(true));
     }
 
     @Test
     public void directlyRunDashboardResponseTest() {
-        assertThat(canteenSimulation.getDashboardResponse())
+        assertThat(canteenSimulationImpl.getDashboardResponse())
                 .isEqualTo(new DashboardResponse(
                         SimulationState.pending,
                         List.of(), List.of(), List.of()
@@ -46,12 +50,12 @@ public class SimulationTest {
 
     @Test
     public void simulationDataTest() {
-        assertThat(simulationDataManager.querySimulationDataList())
+        assertThat(simulationDataManagerImpl.querySimulationDataList())
                 .isEqualTo(new SimulationDataQueryResponse(
                         new HashMap<>(),
                         null
                 ));
-        assertThat(simulationDataManager.newSimulationData(
+        assertThat(simulationDataManagerImpl.newSimulationData(
                 new SimulationParametersDto(
                         60,
                         0.8,
@@ -70,12 +74,13 @@ public class SimulationTest {
                         30
                 ), Optional.of("TestData")
         )).isEqualTo(true);
+        assertThat(simulationDataManagerImpl.selectSimulationData(0)).isEqualTo(true);
         var expected = new HashMap<Integer, SimulationDataDto>();
         expected.put(0, new SimulationDataDto(0, "TestData"));
-        assertThat(simulationDataManager.querySimulationDataList())
+        assertThat(simulationDataManagerImpl.querySimulationDataList())
                 .isEqualTo(new SimulationDataQueryResponse(
                         expected,
-                        null
+                        0
                 ));
     }
 }
