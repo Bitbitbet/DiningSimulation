@@ -1,6 +1,6 @@
 package com.sim.canteen.enums;
 
-public enum CustomerStatus {
+public enum CustomerState {
     Queuing,
     WaitingForDish,
     WaitingForGroup,

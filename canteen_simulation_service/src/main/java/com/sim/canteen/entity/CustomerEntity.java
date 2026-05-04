@@ -1,7 +1,7 @@
 package com.sim.canteen.entity;
 
 import com.sim.canteen.dto.CustomerDto;
-import com.sim.canteen.enums.CustomerStatus;
+import com.sim.canteen.enums.CustomerState;
 import com.sim.canteen.enums.DishType;
 
 public class CustomerEntity {
@@ -14,7 +14,7 @@ public class CustomerEntity {
     public final double arriveTime;
     public final DishType orderType;
 
-    public CustomerStatus status;
+    public CustomerState status;
 
     /**
      * 当status == CustomerStatus.WaitingForDish
@@ -54,7 +54,7 @@ public class CustomerEntity {
         this.arriveTime = arriveTime;
         this.orderType = orderType;
 
-        this.status = CustomerStatus.Queuing;
+        this.status = CustomerState.Queuing;
     }
 
     public CustomerDto dto() {

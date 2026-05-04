@@ -4,6 +4,7 @@ import com.sim.canteen.dto.DashboardResponse;
 import com.sim.canteen.dto.SimulationParametersDto;
 import com.sim.canteen.dto.StatusResponse;
 import com.sim.canteen.service.CanteenSimulation;
+import com.sim.canteen.service.SimulationDataManager;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,9 +16,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class CanteenController {
     private final CanteenSimulation canteenSimulation;
+    private final SimulationDataManager simulationDataManager;
 
-    public CanteenController(CanteenSimulation canteenSimulation) {
+    public CanteenController(
+            CanteenSimulation canteenSimulation,
+            SimulationDataManager simulationDataManager
+    ) {
         this.canteenSimulation = canteenSimulation;
+        this.simulationDataManager = simulationDataManager;
     }
 
     @GetMapping("/status")

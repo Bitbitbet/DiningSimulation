@@ -6,7 +6,7 @@ import com.sim.canteen.dto.StatusResponse;
 import com.sim.canteen.entity.CustomerEntity;
 import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.entity.WindowEntity;
-import com.sim.canteen.enums.CustomerStatus;
+import com.sim.canteen.enums.CustomerState;
 import com.sim.canteen.service.CanteenSimulation;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +36,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     private volatile boolean running = false;
     private volatile boolean shutdown = false;
 
-    private SimulationData simulationData = null;
+    private CustomerArrival simulationData = null;
 
     private volatile double simulationSpeed;
 
@@ -108,7 +108,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             );
         }
         this.customers.clear();
-        this.simulationData = new SimulationData(parameters);
+        this.simulationData = new CustomerArrival(parameters);
     }
 
     @Override
@@ -179,17 +179,17 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 if (!window.queue.isEmpty()) {
                     var servingCustomer = customers.get(window.queue.getFirst());
                     // 排队的第一位开始等待食物
-                    if (servingCustomer.status == CustomerStatus.Queuing) {
+                    if (servingCustomer.status == CustomerState.Queuing) {
                         // 顾客切换到等待食物状态
-                        servingCustomer.status = CustomerStatus.WaitingForDish;
+                        servingCustomer.status = CustomerState.WaitingForDish;
                         servingCustomer.dishPrepEndTime =
                                 window.freeSince + servingCustomer.simulatedDishPrepSeconds * window.windowPrepTimeModifier;
                     }
                     // 排队的第一位检查食物是否完成
-                    if (servingCustomer.status == CustomerStatus.WaitingForDish) {
+                    if (servingCustomer.status == CustomerState.WaitingForDish) {
                         // 顾客食物完成
                         if (servingCustomer.dishPrepEndTime <= time) {
-                            servingCustomer.status = CustomerStatus.WaitingForGroup;
+                            servingCustomer.status = CustomerState.WaitingForGroup;
                             window.queue.removeFirst();
                             window.freeSince = servingCustomer.dishPrepEndTime;
                             recheck = true;
@@ -201,17 +201,17 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
         // 处理等待组员的顾客
         for (var customer : customers.values()) {
-            if (customer.status == CustomerStatus.WaitingForGroup) {
+            if (customer.status == CustomerState.WaitingForGroup) {
                 var group = customerGroups.get(customer.id).stream().map(customers::get).collect(Collectors.toCollection(ArrayList::new));
                 if (group.stream()
-                        .allMatch(customerEntity -> customerEntity.status == CustomerStatus.WaitingForGroup)) {
+                        .allMatch(customerEntity -> customerEntity.status == CustomerState.WaitingForGroup)) {
                     // 所有人都已经拿到食物
                     var lastCustomerToGetFood = group.stream()
                             .max(Comparator.comparingDouble(customerEntity -> customerEntity.dishPrepEndTime));
                     var startWaitingForSeatTime = lastCustomerToGetFood.get().dishPrepEndTime;
 
                     group.forEach(customerEntity -> {
-                        customerEntity.status = CustomerStatus.WaitingForSeat;
+                        customerEntity.status = CustomerState.WaitingForSeat;
                         customerEntity.startWaitingForSeatTime = startWaitingForSeatTime;
                     });
                 }
@@ -222,7 +222,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             // 处理所有的顾客离开，食物吃完
             for (var iter = customers.entrySet().iterator(); iter.hasNext();) {
                 var customer = iter.next().getValue();
-                if (customer.status == CustomerStatus.Eating) {
+                if (customer.status == CustomerState.Eating) {
                     if(customer.eatEndTime <= time) {
                         // 检查组，删除组
                         var group = customerGroups.get(customer.groupId);
@@ -230,8 +230,6 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                         if(group.isEmpty()) {
                             customerGroups.remove(customer.groupId);
                         }
-                        // 删除这个顾客
-                        iter.remove();
 
                         var seat = seats.get(customer.seatId);
                         seat.customers.remove(customer.id);
@@ -245,13 +243,15 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                             case 3:
                                 seat.oneFreeSince = customer.eatEndTime;
                         }
+                        // 最后删除这个顾客
+                        iter.remove();
                     }
                 }
             }
             // 处理所有的座位请求
             var waiting_seat_customers = customers
                     .values().stream()
-                    .filter(customer -> customer.status == CustomerStatus.WaitingForSeat)
+                    .filter(customer -> customer.status == CustomerState.WaitingForSeat)
                     .sorted(Comparator.comparingDouble(customerEntity -> customerEntity.startWaitingForSeatTime))
                     .collect(Collectors.toCollection(ArrayList::new));
 
@@ -290,7 +290,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     for(var inGroupCustomerId: customerGroups.get(customer.groupId)) {
                         var inGroupCustomer = customers.get(inGroupCustomerId);
                         seat.customers.add(inGroupCustomerId);
-                        inGroupCustomer.status = CustomerStatus.Eating;
+                        inGroupCustomer.status = CustomerState.Eating;
                         inGroupCustomer.eatEndTime = seatFreeSince + inGroupCustomer.simulatedEatTimeSeconds;
                     }
                 }
