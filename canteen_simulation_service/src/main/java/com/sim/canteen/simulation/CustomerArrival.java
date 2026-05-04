@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class CustomerArrival {
     /**
-     * @return 在这个时间节点之前新到达的所有顾客
+     * @return 在当前时间之前新到达的所有顾客
      */
     public static List<List<CustomerEntity>> next_until(SimulationData data) {
         while(data.nextCustomerGrpTime < data.time) {
@@ -21,7 +21,7 @@ public class CustomerArrival {
                 .stream()
                 .collect(Collectors.partitioningBy((i -> i <= data.time)));
 
-        // 把指定时间之后的顾客到达时间存起来
+        // 把当前时间之后的顾客到达时间存起来
         data.customerArriveTimes = map.get(false);
 
         return map.get(true)
@@ -31,13 +31,21 @@ public class CustomerArrival {
     }
 
     private static double randomEatSeconds(SimulationData data) {
-        return ThreadLocalRandom.current()
+        var sec = ThreadLocalRandom.current()
                 .nextGaussian(data.para.customerEatTimeAvg(), data.para.customerEatTimeStdVar());
+        if(sec <= 0)
+            sec = data.para.customerEatTimeAvg();
+
+        return sec;
     }
 
     private static double randomDishPrepSeconds(SimulationData data) {
-        return ThreadLocalRandom.current()
+        var sec =  ThreadLocalRandom.current()
                 .nextGaussian(data.para.dishPrepTimeAvg(), data.para.dishPrepTimeStdVar());
+        if(sec <= 0)
+            sec = data.para.dishPrepTimeAvg();
+
+        return sec;
     }
 
     private static List<CustomerEntity> newCustomerGroup(SimulationData data, double arriveTime) {

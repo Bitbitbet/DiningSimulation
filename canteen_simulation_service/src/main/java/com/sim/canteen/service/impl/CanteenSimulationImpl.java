@@ -194,7 +194,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         for (var customer : data.customers.values()) {
             if (customer.state == CustomerState.WaitingForGroup) {
                 var group = data.customerGroups
-                        .get(customer.id).stream().map(data.customers::get).collect(Collectors.toCollection(ArrayList::new));
+                        .get(customer.groupId).stream().map(data.customers::get).collect(Collectors.toCollection(ArrayList::new));
                 if (group.stream()
                         .allMatch(customerEntity -> customerEntity.state == CustomerState.WaitingForGroup)) {
                     // 所有人都已经拿到食物
