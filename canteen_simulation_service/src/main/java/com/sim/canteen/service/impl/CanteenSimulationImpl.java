@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
@@ -239,31 +240,35 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     .collect(Collectors.toCollection(ArrayList::new));
 
             var seatsByOccupation = data.seats.stream().collect(Collectors.groupingBy(seat -> seat.customers.size()));
+            var seatsOfThree = seatsByOccupation.getOrDefault(3, List.of());
+            var seatsOfTwo = seatsByOccupation.getOrDefault(2, List.of());
+            var seatsOfOne = seatsByOccupation.getOrDefault(1, List.of());
+            var seatsOfZero = seatsByOccupation.getOrDefault(0, List.of());
             for (var customer : waiting_seat_customers) {
                 SeatEntity seat = null;
                 double seatFreeSince = 0;
                 switch (customer.groupSize) {
                     case 1:
-                        if (!seatsByOccupation.get(3).isEmpty()) {
-                            seat = seatsByOccupation.get(3).removeLast();
+                        if (!seatsOfThree.isEmpty()) {
+                            seat = seatsOfThree.removeLast();
                             seatFreeSince = seat.oneFreeSince;
                             break;
                         }
                     case 2:
-                        if (!seatsByOccupation.get(2).isEmpty()) {
-                            seat = seatsByOccupation.get(3).removeLast();
+                        if (!seatsOfTwo.isEmpty()) {
+                            seat = seatsOfTwo.removeLast();
                             seatFreeSince = seat.twoFreeSince;
                             break;
                         }
                     case 3:
-                        if (!seatsByOccupation.get(1).isEmpty()) {
-                            seat = seatsByOccupation.get(3).removeLast();
+                        if (!seatsOfOne.isEmpty()) {
+                            seat = seatsOfOne.removeLast();
                             seatFreeSince = seat.threeFreeSince;
                             break;
                         }
                     case 4:
-                        if (!seatsByOccupation.get(0).isEmpty()) {
-                            seat = seatsByOccupation.get(3).removeLast();
+                        if (!seatsOfZero.isEmpty()) {
+                            seat = seatsOfZero.removeLast();
                             seatFreeSince = seat.fourFreeSince;
                             break;
                         }
