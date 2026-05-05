@@ -412,28 +412,18 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
         double seatIdleRate = (double) idleSeats / (data.seats.size() * 4);
 
-        // 计算等待座位的顾客 和 吃饭中的顾客
         int waitingSeatsCustomers = 0;
         double currentWaitSeatSecsTotal = 0.0;
-        int eatingCustomers = 0;
         for (var customer : data.customers.values()) {
             if (customer.state == CustomerState.WaitingForSeat) {
                 waitingSeatsCustomers++;
                 currentWaitSeatSecsTotal += data.time - customer.startWaitingForSeatTime;
             }
-            if (customer.state == CustomerState.Eating) {
-                eatingCustomers++;
-            }
         }
         double averageCustomerWaitSeatSeconds = (
                 data.leftCustomerWaitSeatSecAvg * data.leftCustomerWaitSeatSampleCnt
                 + currentWaitSeatSecsTotal) / (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers);
-        double congestionRate = 0;
-        if (eatingCustomers != 0) {
-            congestionRate = (double) waitingSeatsCustomers / (data.seats.size() * 4);
-        }
-
-        // 计算所有顾客的等待座位时长
+        double congestionRate = (double) waitingSeatsCustomers / (data.seats.size() * 4);
 
 
         return new HistoryPointDto(
@@ -446,5 +436,4 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 congestionRate
         );
     }
-
 }
