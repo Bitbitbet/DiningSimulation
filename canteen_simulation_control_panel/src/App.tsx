@@ -376,34 +376,51 @@ function App() {
   }
 
   const saveParameters = async () => {
-    const errorMessage = validateParameters()
-    if (errorMessage) {
-      setNotice(errorMessage)
+  const errorMessage = validateParameters()
+  if (errorMessage) {
+    setNotice(errorMessage)
+    return
+  }
+
+  setLoading(true)
+
+  try {
+    const payload = {
+      simulationTotalMinutes: parameters.simulationTotalMinutes,
+      customerArriveRate: parameters.customerArriveRate,
+      customerGroupSizeRatio: parameters.customerGroupSizeRatio,
+      customerDishRatio: parameters.customerDishRatio,
+
+      // 注意：这里要用后端 SimulationParametersDto 里的字段名
+      customerEatSecondsAvg: parameters.customerEatTimeAvg,
+      customerEatSecondsStdVar: parameters.customerEatTimeStdVar,
+      dishPrepSecondsAvg: parameters.dishPrepTimeAvg,
+      dishPrepTimeSecondsVar: parameters.dishPrepTimeStdVar,
+
+      windows: parameters.windows,
+      seatCount: parameters.seatCount,
+    }
+
+    const response = await fetch(`${API_BASE}/data/new`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      setNotice(`保存参数失败：${response.status} ${errorText}`)
       return
     }
 
-    setLoading(true)
-
-    try {
-      const response = await fetch(`${API_BASE}/data/new`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parameters),
-      })
-
-      if (!response.ok) {
-        setNotice('保存参数失败，请检查后端 /api/data/new 接口。')
-        return
-      }
-
-      setNotice('参数已提交后端，并生成新的仿真数据。')
-      await refreshAll()
-    } catch {
-      setNotice('保存参数失败，请检查后端是否启动。')
-    } finally {
-      setLoading(false)
-    }
+    setNotice('参数已提交后端，并生成新的仿真数据。')
+    await refreshAll()
+  } catch {
+    setNotice('保存参数失败，请检查后端是否启动。')
+  } finally {
+    setLoading(false)
   }
+}
 
   const selectSimulationData = async (id: number) => {
     setLoading(true)
@@ -431,6 +448,34 @@ function App() {
       await refreshAll()
     } catch {
       setNotice('选择数据失败，请检查后端 /api/data/select 接口。')
+    } finally {
+      setLoading(false)
+    }
+  }
+  const deleteSimulationData = async (id: number) => {
+    const confirmed = window.confirm(`确定要删除 Simulation #${id} 吗？`)
+
+    if (!confirmed) {
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch(`${API_BASE}/data/delete/${id}`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        setNotice(`删除数据失败：${response.status} ${errorText}`)
+        return
+      }
+
+      setNotice(`已删除仿真数据：${id}`)
+      await refreshAll()
+    } catch {
+      setNotice('删除数据失败，请检查后端 /api/data/delete/{id} 接口。')
     } finally {
       setLoading(false)
     }
@@ -804,7 +849,30 @@ function App() {
             cursor: pointer;
             font-weight: 900;
           }
+          .action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
+.danger-button {
+  border: none;
+  border-radius: 16px;
+  padding: 13px 18px;
+  cursor: pointer;
+  font-weight: 900;
+  background: #fff0f0;
+  color: #d9363e;
+}
+
+.danger-button:hover {
+  background: #ffe1e1;
+}
+
+.danger-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
           .primary-button,
           .wide-button {
             background: #2454e6;
@@ -1352,9 +1420,25 @@ function App() {
                           <td>{dataList.selected === item.id ? '当前选中' : '数据库'}</td>
                           <td>{dataList.selected === item.id ? '当前使用' : '未选中'}</td>
                           <td>
-                            <button className="secondary-button" type="button" onClick={() => selectSimulationData(item.id)}>
-                              选择
-                            </button>
+                            <div className="action-buttons">
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => selectSimulationData(item.id)}
+                                disabled={loading}
+                              >
+                                选择
+                              </button>
+
+                              <button
+                                className="danger-button"
+                                type="button"
+                                onClick={() => deleteSimulationData(item.id)}
+                                disabled={loading}
+                              >
+                                删除
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
