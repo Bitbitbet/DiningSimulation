@@ -10,6 +10,7 @@ import com.sim.canteen.enums.SimulationState;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.simulation.CustomerArrival;
 import com.sim.canteen.simulation.SimulationData;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -144,14 +145,14 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
             var timeLeap = ((double) Duration.between(lastUpdate, Instant.now()).toNanos() / 1_000_000_000) * simulationSpeed;
             data.time += timeLeap;
-            boolean finished = false;
+            data.finished = false;
             if(data.time >= data.para.simulationTotalMinutes() * 60) {
                 data.time = data.para.simulationTotalMinutes() * 60;
-                finished = true;
+                data.finished = true;
             }
             simulationThreadTick();
             lastUpdate = Instant.now();
-            if(finished) {
+            if(data.finished) {
                 running = false;
             }
         }
@@ -185,8 +186,10 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     if (servingCustomer.state == CustomerState.Queuing) {
                         // 顾客切换到等待食物状态
                         servingCustomer.state = CustomerState.WaitingForDish;
+
                         servingCustomer.dishPrepEndTime =
-                                window.freeSince + servingCustomer.simulatedDishPrepSeconds * window.windowPrepTimeModifier;
+                                Math.max(servingCustomer.arriveTime, window.freeSince)
+                                        + servingCustomer.simulatedDishPrepSeconds * window.windowPrepTimeModifier;
                     }
                     // 排队的第一位检查食物是否完成
                     if (servingCustomer.state == CustomerState.WaitingForDish) {
@@ -254,21 +257,23 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 }
             }
             // 处理所有的座位请求
-            var waiting_seat_customers = data.customers
+            var waiting_seat_customer_groups = data.customers
                     .values().stream()
                     .filter(customer -> customer.state == CustomerState.WaitingForSeat)
                     .sorted(Comparator.comparingDouble(customerEntity -> customerEntity.startWaitingForSeatTime))
+                    .map(customer -> customer.groupId)
                     .collect(Collectors.toCollection(ArrayList::new));
 
-            var seatsByOccupation = data.seats.stream().collect(Collectors.groupingBy(seat -> seat.customers.size()));
+            var seatsByOccupation = data.seats.reversed().stream().collect(Collectors.groupingBy(seat -> seat.customers.size()));
             var seatsOfThree = seatsByOccupation.getOrDefault(3, List.of());
             var seatsOfTwo = seatsByOccupation.getOrDefault(2, List.of());
             var seatsOfOne = seatsByOccupation.getOrDefault(1, List.of());
             var seatsOfZero = seatsByOccupation.getOrDefault(0, List.of());
-            for (var customer : waiting_seat_customers) {
+            for (var customerGroupId : waiting_seat_customer_groups) {
                 SeatEntity seat = null;
                 double seatFreeSince = 0;
-                switch (customer.groupSize) {
+                var group = data.customerGroups.get(customerGroupId);
+                switch (group.size()) {
                     case 1:
                         if (!seatsOfThree.isEmpty()) {
                             seat = seatsOfThree.removeLast();
@@ -296,13 +301,14 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 }
                 if (seat != null) {
                     recheck = true;
-                    for (var inGroupCustomerId : data.customerGroups.get(customer.groupId)) {
-                        var inGroupCustomer = data.customers.get(inGroupCustomerId);
-                        seat.customers.add(inGroupCustomerId);
-                        inGroupCustomer.seatId = seat.id;
-                        inGroupCustomer.state = CustomerState.Eating;
-                        inGroupCustomer.eatEndTime = seatFreeSince + inGroupCustomer.simulatedEatTimeSeconds;
-                        var waitForSeatSeconds = seatFreeSince - inGroupCustomer.startWaitingForSeatTime;
+                    for (var customerId : group) {
+                        var customer = data.customers.get(customerId);
+                        double takeSeatTime = Math.max(seatFreeSince, customer.startWaitingForSeatTime);
+                        seat.customers.add(customerId);
+                        customer.seatId = seat.id;
+                        customer.state = CustomerState.Eating;
+                        customer.eatEndTime = takeSeatTime + customer.simulatedEatTimeSeconds;
+                        var waitForSeatSeconds = takeSeatTime - customer.startWaitingForSeatTime;
 
                         // 累积计算顾客等待座位时长的平均
                         data.customerWaitSeatSecAvg =
@@ -314,6 +320,11 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             }
             if (!recheck) break;
         }
+        var historyPoint = calculateHistory();
+        data.historyPoints.add(historyPoint);
+    }
+
+    private HistoryPointDto calculateHistory() {
         // 计算平均队列长度
         int queueLength = 0;
         int busyWindows = 0;
@@ -353,7 +364,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             congestionRate = (double) waitingSeatsCustomers / eatingCustomers;
         }
 
-        var historyPoint = new HistoryPointDto(
+        return new HistoryPointDto(
                 data.time,
                 averageQueueLength,
                 data.customerWaitSeatSecAvg,
@@ -362,7 +373,6 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 seatIdleRate,
                 congestionRate
         );
-        data.historyPoints.add(historyPoint);
     }
 
 }

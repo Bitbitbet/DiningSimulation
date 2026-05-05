@@ -12,11 +12,11 @@ public record SimulationParametersDto(
         Map<Integer, Integer> customerGroupSizeRatio,
         Map<DishType, Integer> customerDishRatio,
 
-        double customerEatTimeAvg,
-        double customerEatTimeStdVar,
+        double customerEatSecondsAvg,
+        double customerEatSecondsStdVar,
 
-        double dishPrepTimeAvg,
-        double dishPrepTimeStdVar,
+        double dishPrepSecondsAvg,
+        double dishPrepTimeSecondsVar,
 
         List<WindowParametersDto> windows,
         int seatCount

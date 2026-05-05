@@ -81,16 +81,16 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         if(!parameters.customerDishRatio().containsKey(DishType.C)) {
             return false;
         }
-        if(parameters.customerEatTimeAvg() <= 0) {
+        if(parameters.customerEatSecondsAvg() <= 0) {
             return false;
         }
-        if(parameters.customerEatTimeStdVar() <= 0) {
+        if(parameters.customerEatSecondsStdVar() <= 0) {
             return false;
         }
-        if(parameters.dishPrepTimeAvg() <= 0) {
+        if(parameters.dishPrepSecondsAvg() <= 0) {
             return false;
         }
-        if(parameters.dishPrepTimeStdVar() <= 0) {
+        if(parameters.dishPrepTimeSecondsVar() <= 0) {
             return false;
         }
         if(!parameters.windows()

@@ -32,18 +32,18 @@ public class CustomerArrival {
 
     private static double randomEatSeconds(SimulationData data) {
         var sec = ThreadLocalRandom.current()
-                .nextGaussian(data.para.customerEatTimeAvg(), data.para.customerEatTimeStdVar());
+                .nextGaussian(data.para.customerEatSecondsAvg(), data.para.customerEatSecondsStdVar());
         if(sec <= 0)
-            sec = data.para.customerEatTimeAvg();
+            sec = data.para.customerEatSecondsAvg();
 
         return sec;
     }
 
     private static double randomDishPrepSeconds(SimulationData data) {
         var sec =  ThreadLocalRandom.current()
-                .nextGaussian(data.para.dishPrepTimeAvg(), data.para.dishPrepTimeStdVar());
+                .nextGaussian(data.para.dishPrepSecondsAvg(), data.para.dishPrepTimeSecondsVar());
         if(sec <= 0)
-            sec = data.para.dishPrepTimeAvg();
+            sec = data.para.dishPrepSecondsAvg();
 
         return sec;
     }
