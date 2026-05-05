@@ -25,6 +25,13 @@ type DashboardResponse = {
     seatOccupation: number[]
 }
 
+type HistoryResponse = {
+    data: HistoryPoint[]
+    begin: number
+    count: number
+    endingHasMore: boolean
+}
+
 type SimulationDataDto = {
     id: number
     name?: string
@@ -91,10 +98,10 @@ const initialParameters: SimulationParameters = {
         B: 35,
         C: 25,
     },
-    customerEatSecondsAvg: 24,
-    customerEatSecondsStdVar: 4,
-    dishPrepSecondsAvg: 3.5,
-    dishPrepSecondsStdVar: 0.8,
+    customerEatSecondsAvg: 1800,
+    customerEatSecondsStdVar: 120,
+    dishPrepSecondsAvg: 180,
+    dishPrepSecondsStdVar: 30,
     windows: [
         { dishType: 'A', windowPrepTimeModifier: 1 },
         { dishType: 'B', windowPrepTimeModifier: 1 },
@@ -178,6 +185,162 @@ function renderBars(values: number[], maxValue = 1) {
 }
 
 
+function renderHistoryOverview(history: HistoryPoint[]) {
+    if (history.length === 0) {
+        return <div className="empty-chart">暂无历史数据，请先选择仿真数据并运行一段时间。</div>
+    }
+
+    const width = 720
+    const height = 260
+    const paddingX = 38
+    const paddingY = 30
+    const plotWidth = width - paddingX * 2
+    const plotHeight = height - paddingY * 2
+
+    const xOf = (index: number) => {
+        if (history.length <= 1) return paddingX
+        return paddingX + (index / (history.length - 1)) * plotWidth
+    }
+
+    const normalize = (values: number[]) => {
+        const safeValues = values.map((value) => (Number.isFinite(value) ? value : 0))
+        const minValue = Math.min(...safeValues, 0)
+        const maxValue = Math.max(...safeValues, 1)
+        const span = maxValue - minValue || 1
+
+        return safeValues.map((value, index) => {
+            const x = xOf(index)
+            const y = paddingY + (1 - (value - minValue) / span) * plotHeight
+            return `${x.toFixed(1)},${y.toFixed(1)}`
+        }).join(' ')
+    }
+
+    const series = [
+        {
+            label: '仿真时间',
+            color: '#334155',
+            values: history.map((item) => (item.time ?? 0) / 60),
+            latest: `${formatNumber((history.at(-1)?.time ?? 0) / 60)} 分钟`,
+        },
+        {
+            label: '平均排队长度',
+            color: '#1e5bff',
+            values: history.map((item) => item.averageQueueLength ?? 0),
+            latest: `${formatNumber(history.at(-1)?.averageQueueLength ?? 0)} 人`,
+        },
+        {
+            label: '平均等座时间',
+            color: '#ff8a00',
+            values: history.map((item) => (item.averageCustomerWaitSeatSeconds ?? 0) / 60),
+            latest: `${formatNumber((history.at(-1)?.averageCustomerWaitSeatSeconds ?? 0) / 60)} 分钟`,
+        },
+        {
+            label: '厨师利用率',
+            color: '#20a66a',
+            values: history.map((item) => (item.chefUtilization ?? 0) * 100),
+            latest: percent(history.at(-1)?.chefUtilization ?? 0),
+        },
+        {
+            label: '座位周转率',
+            color: '#7c3aed',
+            values: history.map((item) => item.seatTurnover ?? 0),
+            latest: `${formatNumber(history.at(-1)?.seatTurnover ?? 0)} 次/时段`,
+        },
+        {
+            label: '座位空置率',
+            color: '#0891b2',
+            values: history.map((item) => (item.seatIdleRate ?? 0) * 100),
+            latest: percent(history.at(-1)?.seatIdleRate ?? 0),
+        },
+        {
+            label: '拥堵程度',
+            color: '#d9363e',
+            values: history.map((item) => (item.congestionRate ?? 0) * 100),
+            latest: percent(history.at(-1)?.congestionRate ?? 0),
+        },
+    ]
+
+    const firstTime = history[0]?.time ?? 0
+    const lastTime = history.at(-1)?.time ?? 0
+
+    return (
+        <div>
+            <svg
+                viewBox={`0 0 ${width} ${height}`}
+                role="img"
+                aria-label="仿真历史总览折线图"
+                style={{ width: '100%', height: 300, display: 'block' }}
+            >
+                <line x1={paddingX} y1={height - paddingY} x2={width - paddingX} y2={height - paddingY} stroke="#dbe7f5" strokeWidth="2" />
+                <line x1={paddingX} y1={paddingY} x2={paddingX} y2={height - paddingY} stroke="#dbe7f5" strokeWidth="2" />
+                {[0.25, 0.5, 0.75].map((ratio) => {
+                    const y = paddingY + ratio * plotHeight
+                    return <line key={ratio} x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="#edf3fb" strokeWidth="1" />
+                })}
+                {series.map((item) => (
+                    <polyline
+                        key={item.label}
+                        points={normalize(item.values)}
+                        fill="none"
+                        stroke={item.color}
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                ))}
+                <text x={paddingX} y={height - 7} fill="#6d7f9b" fontSize="18" fontWeight="700">
+                    {formatTime(firstTime)}
+                </text>
+                <text x={width - paddingX - 95} y={height - 7} fill="#6d7f9b" fontSize="18" fontWeight="700">
+                    {formatTime(lastTime)}
+                </text>
+            </svg>
+
+            <div className="summary-row" style={{ marginTop: 8 }}>
+                {series.map((item) => (
+                    <span key={item.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <i style={{ width: 12, height: 12, borderRadius: 999, background: item.color, display: 'inline-block' }} />
+                        {item.label}：{item.latest}
+                    </span>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function numberInputField(
+    { label, initial, callback, min, max, step, unit }:
+        {
+            label: string;
+            initial: number;
+            callback: (value: number) => void;
+            min?: number;
+            max?: number;
+            step?: number;
+            unit?: string;
+        }) {
+
+    const [value, setValue] = useState(initial);
+    return <label>
+        {label}
+        <input
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={
+                event => {
+                    const v = Number(event.target.value);
+                    setValue(v);
+                    callback(v);
+                }
+            }
+        />
+        {unit ? <span>{unit}</span> : null}
+    </label>;
+}
+
 export default function App() {
     const [online, setOnline] = useState(false)
     const onlineRef = useRef(online);
@@ -189,10 +352,17 @@ export default function App() {
     const [dashboardLoading, setDashboardLoading] = useState(false);
     const dashboardLoadingRef = useRef(dashboardLoading);
 
+    const [recentHistory, setRecentHistory] = useState<HistoryPoint[]>([])
+    const [historyLoading, setHistoryLoading] = useState(false)
+    const historyLoadingRef = useRef(historyLoading)
+    const selectedDataRef = useRef<number | null>(null)
+
     const [dataList, setDataList] = useState<SimulationDataQueryResponse>(emptyDataList)
     const [dataListLoading, setDataListLoading] = useState(false);
 
     const [parameters, setParameters] = useState<SimulationParameters>(initialParameters)
+    const [simulationSpeed, setSimulationSpeedValue] = useState(1)
+    const [speedSaving, setSpeedSaving] = useState(false)
     const [notice, setNotice] = useState('正在连接后端服务...')
 
     const hasSelectedSimulationData = dataList.selected != null
@@ -206,6 +376,12 @@ export default function App() {
     useEffect(() => {
         dashboardLoadingRef.current = dashboardLoading;
     }, [dashboardLoading]);
+    useEffect(() => {
+        historyLoadingRef.current = historyLoading;
+    }, [historyLoading]);
+    useEffect(() => {
+        selectedDataRef.current = dataList.selected;
+    }, [dataList.selected]);
 
     const updateStatus = useCallback(async () => {
         if (onlineLoadingRef.current) {
@@ -265,6 +441,9 @@ export default function App() {
             });
 
             setDataList(response);
+            if (response.selected == null) {
+                setRecentHistory([]);
+            }
         } catch (_) {
 
         } finally {
@@ -272,16 +451,48 @@ export default function App() {
         }
     }
 
+    const updateRecentHistory = useCallback(async () => {
+        if (!onlineRef.current) {
+            return;
+        }
+
+        if (selectedDataRef.current == null) {
+            setRecentHistory([]);
+            return;
+        }
+
+        if (historyLoadingRef.current) {
+            return;
+        }
+
+        setHistoryLoading(true);
+        try {
+            const response = await fetchWithTimeout(`${API_BASE}/history/range?begin=0&count=1000`, undefined, 5000).then(r => {
+                if (!r.ok) throw new Error('Response not ok')
+
+                return r.json() as Promise<HistoryResponse>
+            });
+
+            setRecentHistory(response.data ?? []);
+        } catch (_) {
+            setRecentHistory([]);
+        } finally {
+            setHistoryLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         updateStatus();
         const timerStatus = setInterval(updateStatus, 2000);
         const timerDashboard = setInterval(updateDashboard, 1000);
+        const timerHistory = setInterval(updateRecentHistory, 3000);
 
         return () => {
             clearInterval(timerStatus);
             clearInterval(timerDashboard);
+            clearInterval(timerHistory);
         }
-    }, [])
+    }, [updateDashboard, updateRecentHistory, updateStatus])
 
     useEffect(() => {
         if (online) {
@@ -289,6 +500,16 @@ export default function App() {
             updateDataList();
         }
     }, [online])
+
+    useEffect(() => {
+        if (dataList.selected == null) {
+            setRecentHistory([]);
+            return;
+        }
+
+        updateDashboard();
+        updateRecentHistory();
+    }, [dataList.selected, updateDashboard, updateRecentHistory])
 
 
     const formatedTime = formatTime(dashboard.currentHistory.time);
@@ -302,7 +523,7 @@ export default function App() {
 
     const totalQueueLength = dashboard.windowsQueueSizes.reduce((sum, value) => sum + value, 0)
     const occupiedSeatCount = dashboard.seatOccupation.filter((value) => value > 0).length
-    const dataItems = Object.values(dataList.simulationDataList ?? {})
+    const dataItems = Object.values(dataList.simulationDataList ?? {}) as SimulationDataDto[]
 
     const validateParameters = () => {
         if (parameters.simulationTotalMinutes <= 0) {
@@ -333,12 +554,12 @@ export default function App() {
             return '座位数量必须大于 0。'
         }
 
-        const dishRatioSum = Object.values(parameters.customerDishRatio).reduce((sum, value) => sum + value, 0)
+        const dishRatioSum = (Object.values(parameters.customerDishRatio) as number[]).reduce((sum, value) => sum + value, 0)
         if (dishRatioSum <= 0) {
             return '餐品比例之和必须大于 0。'
         }
 
-        const groupRatioSum = Object.values(parameters.customerGroupSizeRatio).reduce((sum, value) => sum + value, 0)
+        const groupRatioSum = (Object.values(parameters.customerGroupSizeRatio) as number[]).reduce((sum, value) => sum + value, 0)
         if (groupRatioSum <= 0) {
             return '顾客组比例之和必须大于 0。'
         }
@@ -434,6 +655,9 @@ export default function App() {
 
             setNotice(`已选择仿真数据：${id}`)
             await updateDataList()
+            selectedDataRef.current = id
+            await updateDashboard()
+            await updateRecentHistory()
         } catch {
             setNotice('选择数据失败，请检查后端是否运行。')
         } finally {
@@ -507,6 +731,28 @@ export default function App() {
             setNotice('操作失败，请检查后端接口或控制台报错。')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const applySimulationSpeed = async (speed: number) => {
+        const safeSpeed = Math.max(0.1, Math.min(10, speed));
+        setSimulationSpeedValue(safeSpeed);
+        setSpeedSaving(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/simulation/speed?speed=${encodeURIComponent(safeSpeed)}`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to set simulation speed')
+            }
+
+            setNotice(`仿真速度已调整为 ${safeSpeed.toFixed(1)}x。`)
+        } catch {
+            setNotice('仿真速度调整失败，请检查后端 /api/simulation/speed 接口。')
+        } finally {
+            setSpeedSaving(false);
         }
     }
 
@@ -584,45 +830,25 @@ export default function App() {
                             <div className="panel-head">
                                 <div>
                                     <h2>历史指标趋势</h2>
-                                    <p>展示最近 10 条历史指标，避免数据过密影响观察。</p>
+                                    <p>展示当前仿真从开始到当前时刻的总览折线图。</p>
                                 </div>
-                                <button className="secondary-button" type="button" onClick={/*refreshAll*/() => { }} disabled={loading}>
-                                    刷新数据
+                                <button
+                                    className="secondary-button"
+                                    type="button"
+                                    onClick={updateRecentHistory}
+                                    disabled={loading || historyLoading || !hasSelectedSimulationData}
+                                    title={!hasSelectedSimulationData ? '请先选择仿真数据' : '刷新历史趋势'}
+                                >
+                                    {historyLoading ? '刷新中...' : '刷新历史'}
                                 </button>
                             </div>
-                            {/* <div className="chart-grid">
-                                <div className="chart-card">
-                                    <h3>平均排队长度</h3>
-                                    {renderBars(
-                                        recentHistory.map((item) => item.averageQueueLength ?? 0),
-                                        10,
-                                    )}
-                                </div>
 
-                                <div className="chart-card">
-                                    <h3>顾客等待时间</h3>
-                                    {renderBars(
-                                        recentHistory.map(h => h.averageCustomerWaitSeatSeconds),
-                                        30,
-                                    )}
+                            <div className="chart-grid">
+                                <div className="chart-card" style={{ gridColumn: '1 / -1', minHeight: 360 }}>
+                                    <h3>仿真历史总览（7 项指标展示）</h3>
+                                    {renderHistoryOverview(recentHistory)}
                                 </div>
-
-                                <div className="chart-card">
-                                    <h3>厨师利用率</h3>
-                                    {renderBars(
-                                        recentHistory.map((item) => item.chefUtilization ?? 0),
-                                        1,
-                                    )}
-                                </div>
-
-                                <div className="chart-card">
-                                    <h3>座位周转率</h3>
-                                    {renderBars(
-                                        recentHistory.map((item) => item.seatTurnover),
-                                        10,
-                                    )}
-                                </div>
-                            </div> */}
+                            </div>
                         </div>
 
                         <div className="panel-card">
@@ -653,137 +879,143 @@ export default function App() {
                                 </button>
                             </div>
 
+                            <div
+                                style={{
+                                    padding: '16px 18px',
+                                    borderRadius: 18,
+                                    background: '#f8fbff',
+                                    border: '1px solid #dbe7f5',
+                                    marginBottom: 18,
+                                }}
+                            >
+                                <label style={{ display: 'grid', gap: 10 }}>
+                                    <span>仿真速度：{simulationSpeed.toFixed(1)}x {speedSaving ? '（保存中）' : ''}</span>
+                                    <input
+                                        type="range"
+                                        min="0.1"
+                                        max="10"
+                                        step="0.1"
+                                        value={simulationSpeed}
+                                        onChange={(event) => setSimulationSpeedValue(Number(event.target.value))}
+                                        onMouseUp={(event) => applySimulationSpeed(Number(event.currentTarget.value))}
+                                        onTouchEnd={(event) => applySimulationSpeed(Number(event.currentTarget.value))}
+                                        onBlur={(event) => applySimulationSpeed(Number(event.currentTarget.value))}
+                                        disabled={!online || speedSaving}
+                                    />
+                                </label>
+                                <div className="summary-row" style={{ marginTop: 8 }}>
+                                    <span>0.1x 慢速</span>
+                                    <span>1.0x 正常</span>
+                                    <span>10.0x 快速</span>
+                                </div>
+                            </div>
+
                             {!hasSelectedSimulationData && (
                                 <p className="hint-text">请先在“仿真数据管理”中新建或选择一份仿真数据，然后再开始仿真。</p>
                             )}
 
                             <div className="form-grid">
-                                <label>
-                                    仿真总时长
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={parameters.simulationTotalMinutes}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                simulationTotalMinutes: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                    <span>分钟</span>
-                                </label>
-
-                                <label>
-                                    顾客到达率
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
-                                        value={parameters.customerArriveRate}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                customerArriveRate: Number(event.target.value) * 60,
-                                            })
-                                        }
-                                    />
-                                    <span>人/分钟</span>
-                                </label>
-
-                                <label>
-                                    平均做餐时间
-                                    <input
-                                        type="number"
-                                        min="0.1"
-                                        step="0.1"
-                                        value={parameters.dishPrepSecondsAvg}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                dishPrepSecondsAvg: Number(event.target.value) * 60,
-                                            })
-                                        }
-                                    />
-                                    <span>分钟</span>
-                                </label>
-
-                                <label>
-                                    做餐时间标准差
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
-                                        value={parameters.dishPrepSecondsStdVar}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                dishPrepSecondsStdVar: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                </label>
-
-                                <label>
-                                    平均就餐时间
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        step="1"
-                                        value={parameters.customerEatSecondsAvg}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                customerEatSecondsAvg: Number(event.target.value) * 60,
-                                            })
-                                        }
-                                    />
-                                    <span>分钟</span>
-                                </label>
-
-                                <label>
-                                    就餐时间标准差
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
-                                        value={parameters.customerEatSecondsStdVar}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                customerEatSecondsStdVar: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                </label>
-
-                                <label>
-                                    窗口数量
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="20"
-                                        value={parameters.windows.length}
-                                        onChange={(event) => changeWindowCount(Number(event.target.value))}
-                                    />
-                                    <span>个</span>
-                                </label>
-
-                                <label>
-                                    座位数量
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={parameters.seatCount}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                seatCount: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                    <span>个</span>
-                                </label>
+                                {
+                                    numberInputField({
+                                        label: "仿真总时长",
+                                        initial: parameters.simulationTotalMinutes,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            simulationTotalMinutes: v,
+                                        }),
+                                        min: 1,
+                                        step: 1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "顾客到达率",
+                                        initial: parameters.customerArriveRate * 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            customerArriveRate: v / 60,
+                                        }),
+                                        min: 0,
+                                        step: 0.1,
+                                        unit: "人/分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "平均做餐时间",
+                                        initial: parameters.dishPrepSecondsAvg / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            dishPrepSecondsAvg: v * 60,
+                                        }),
+                                        min: 0.1,
+                                        step: 0.1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "做餐时间标准差",
+                                        initial: parameters.dishPrepSecondsStdVar / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            dishPrepSecondsStdVar: v * 60,
+                                        }),
+                                        min: 0,
+                                        step: 0.1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "平均就餐时间",
+                                        initial: parameters.customerEatSecondsAvg / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            customerEatSecondsAvg: v * 60,
+                                        }),
+                                        min: 1,
+                                        step: 0.5,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "就餐时间标准差",
+                                        initial: parameters.customerEatSecondsStdVar / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            customerEatSecondsStdVar: v * 60,
+                                        }),
+                                        min: 0,
+                                        step: 0.1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "窗口数量",
+                                        initial: parameters.windows.length,
+                                        callback: v => changeWindowCount(v),
+                                        min: 3,
+                                        step: 1,
+                                        unit: "个"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "座位数量",
+                                        initial: parameters.seatCount,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            seatCount: v,
+                                        }),
+                                        min: 3,
+                                        step: 1,
+                                        unit: "个"
+                                    })
+                                }
                             </div>
                         </div>
                     </section>
@@ -899,7 +1131,7 @@ export default function App() {
                                 <button className="secondary-button" type="button" onClick={downloadDashboard}>
                                     下载数据
                                 </button>
-                                <button className="secondary-button" type="button" onClick={() => { }} disabled={loading}>
+                                <button className="secondary-button" type="button" onClick={updateDataList} disabled={loading || dataListLoading}>
                                     刷新数据
                                 </button>
                             </div>
