@@ -38,8 +38,6 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
                 name.orElse("Simulation #" + id),
                 parameters
         );
-        data.id = id;
-        data.para = parameters;
         datas.put(id, data);
 
         return true;

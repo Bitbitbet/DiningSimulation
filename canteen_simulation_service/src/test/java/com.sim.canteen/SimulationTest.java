@@ -3,10 +3,7 @@ package com.sim.canteen;
 
 import com.sim.canteen.dto.request.SimulationParametersDto;
 import com.sim.canteen.dto.request.WindowParametersDto;
-import com.sim.canteen.dto.response.DashboardResponse;
-import com.sim.canteen.dto.response.SimulationDataDto;
-import com.sim.canteen.dto.response.SimulationDataQueryResponse;
-import com.sim.canteen.dto.response.StatusResponse;
+import com.sim.canteen.dto.response.*;
 import com.sim.canteen.enums.DishType;
 import com.sim.canteen.enums.SimulationState;
 import com.sim.canteen.service.CanteenSimulation;
@@ -44,7 +41,12 @@ public class SimulationTest {
         assertThat(canteenSimulationImpl.getDashboardResponse())
                 .isEqualTo(new DashboardResponse(
                         SimulationState.pending,
-                        List.of(), List.of(), List.of()
+                        new HistoryPointDto(
+                                0.0, 0.0,
+                                0.0, 0.0,
+                                0.0, 0.0, 0.0
+                        ),
+                        List.of(), List.of()
                 ));
     }
 

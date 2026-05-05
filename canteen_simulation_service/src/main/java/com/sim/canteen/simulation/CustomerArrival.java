@@ -13,7 +13,7 @@ public class CustomerArrival {
      * @return 在当前时间之前新到达的所有顾客
      */
     public static List<List<CustomerEntity>> next_until(SimulationData data) {
-        while(data.nextCustomerGrpTime < data.time) {
+        while (data.nextCustomerGrpTime < data.time) {
             data.nextCustomerGrpTime += -Math.log(Math.random()) / data.customerGroupArriveRate;
             data.customerArriveTimes.add(data.nextCustomerGrpTime);
         }
@@ -33,33 +33,45 @@ public class CustomerArrival {
     private static double randomEatSeconds(SimulationData data) {
         var sec = ThreadLocalRandom.current()
                 .nextGaussian(data.para.customerEatSecondsAvg(), data.para.customerEatSecondsStdVar());
-        if(sec <= 0)
+        if (sec <= 0)
             sec = data.para.customerEatSecondsAvg();
 
         return sec;
     }
 
     private static double randomDishPrepSeconds(SimulationData data) {
-        var sec =  ThreadLocalRandom.current()
+        var sec = ThreadLocalRandom.current()
                 .nextGaussian(data.para.dishPrepSecondsAvg(), data.para.dishPrepTimeSecondsVar());
-        if(sec <= 0)
+        if (sec <= 0)
             sec = data.para.dishPrepSecondsAvg();
 
         return sec;
     }
 
     private static List<CustomerEntity> newCustomerGroup(SimulationData data, double arriveTime) {
-        var v = ThreadLocalRandom.current().nextDouble();
-        int groupSize;
-        if (v < data.grpOneWeight) {
-            groupSize = 1;
-        } else if (v < data.grpOneWeight + data.grpTwoWeight) {
-            groupSize = 2;
-        } else if (v < data.grpOneWeight + data.grpTwoWeight + data.grpThreeWeight) {
-            groupSize = 3;
-        } else {
-            groupSize = 4;
-        }
+        var oneWeight = data.para.customerGroupSizeRatio().get(1);
+        var twoWeight = data.para.customerGroupSizeRatio().get(2);
+        var threeWeight = data.para.customerGroupSizeRatio().get(3);
+        var fourWeight = data.para.customerGroupSizeRatio().get(4);
+        var total = oneWeight + twoWeight + threeWeight + fourWeight;
+        var choose = ThreadLocalRandom.current().nextInt(0, total);
+        var groupSize = 4;
+        do {
+            if (choose < oneWeight) {
+                groupSize = 1;
+                break;
+            }
+            choose -= oneWeight;
+            if(choose < twoWeight) {
+                groupSize = 2;
+                break;
+            }
+            choose -= twoWeight;
+            if(choose < threeWeight) {
+                groupSize = 3;
+                break;
+            }
+        } while(false);
         var groups = new ArrayList<CustomerEntity>();
         var groupId = data.customerGroupIdGenerator++;
 
@@ -78,20 +90,18 @@ public class CustomerArrival {
     }
 
     private static DishType randomDishType(SimulationData data) {
-        var choose = Math.random();
-        int w = data.para.customerDishRatio().values().stream().reduce(0, Integer::sum);
-
-        var base = 0.0;
-        var rst = DishType.A;
-        for (var entry : data.para.customerDishRatio().entrySet()) {
-            var dishType = entry.getKey();
-            var weight = entry.getValue();
-            base += (double) weight / w;
-            if (choose <= base) {
-                rst = dishType;
-                break;
-            }
+        var aWeight = data.para.customerDishRatio().get(DishType.A);
+        var bWeight = data.para.customerDishRatio().get(DishType.B);
+        var cWeight = data.para.customerDishRatio().get(DishType.C);
+        var total = aWeight + bWeight + cWeight;
+        var choose = ThreadLocalRandom.current().nextInt(0, total);
+        if (choose < aWeight) {
+            return DishType.A;
         }
-        return rst;
+        choose -= aWeight;
+        if (choose < bWeight) {
+            return DishType.B;
+        }
+        return DishType.C;
     }
 }

@@ -2,6 +2,7 @@ package com.sim.canteen.controller;
 
 import com.sim.canteen.dto.request.SimulationParametersDto;
 import com.sim.canteen.dto.response.DashboardResponse;
+import com.sim.canteen.dto.response.HistoryResponse;
 import com.sim.canteen.dto.response.SimulationDataQueryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.enums.ResumeSimulationRst;
@@ -34,6 +35,25 @@ public class CanteenController {
     @GetMapping("/dashboard")
     public DashboardResponse getDashboard() {
         return canteenSimulation.getDashboardResponse();
+    }
+
+    @GetMapping("/history/recent")
+    public ResponseEntity<HistoryResponse> getRecentHistory(@RequestParam int limit,
+                                                            @RequestParam int begin) {
+        if(begin < 0 || limit <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        if(limit > 1000) limit = 1000;
+        return ResponseEntity.ok(canteenSimulation.getRecentHistory(limit, begin));
+    }
+
+    @GetMapping("/history/range")
+    public ResponseEntity<HistoryResponse> getRangeHistory(@RequestParam int begin, @RequestParam int count) {
+        if(begin < 0 || count <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        if(count > 1000) count = 1000;
+        return ResponseEntity.ok(canteenSimulation.getRangeHistory(begin, count));
     }
 
     @PostMapping("/simulation/pause")

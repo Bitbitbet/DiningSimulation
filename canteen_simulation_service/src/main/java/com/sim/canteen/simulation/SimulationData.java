@@ -12,9 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 
 public class SimulationData {
-    public int id;
-    public String name;
-    public SimulationParametersDto para;
+    public final int id;
+    public final String name;
+    public final SimulationParametersDto para;
     public boolean finished = false;
 
     public double time = 0;
@@ -31,18 +31,15 @@ public class SimulationData {
     public final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
 
     // 平均顾客等待座位时间
-    public double customerWaitSeatSecAvg;
+    public double customerWaitSeatSecAvg = 0.0;
     // 平均顾客等待座位时间这一项统计的人数
-    public int customerWaitSeatSampleCnt;
+    public int customerWaitSeatSampleCnt = 0;
 
     // 吃饱离开的顾客总数
-    public int leftCustomers;
+    public int leftCustomers = 0;
 
     // 计算到达学生组率
     public final double customerGroupArriveRate;
-    public final double grpOneWeight;
-    public final double grpTwoWeight;
-    public final double grpThreeWeight;
 
     public List<Double> customerArriveTimes = new ArrayList<>();
     public int customerIdGenerator = 0;
@@ -76,17 +73,14 @@ public class SimulationData {
                     )
             );
         }
-        this.customerWaitSeatSecAvg = 0.0;
-        this.customerWaitSeatSampleCnt = 0;
-        this.leftCustomers = 0;
 
         var ratio = parameters.customerGroupSizeRatio();
         double totalWeight = ratio.get(1) + ratio.get(2) + ratio.get(3) + ratio.get(4);
-        grpOneWeight = ratio.get(1) / totalWeight;
-        grpTwoWeight = ratio.get(2) / totalWeight;
-        grpThreeWeight = ratio.get(3) / totalWeight;
-        double groupSizeFour = ratio.get(4) / totalWeight;
-        double e = grpOneWeight + grpTwoWeight * 2 + grpThreeWeight * 3 + groupSizeFour * 4;
+        double grpOneWeight = ratio.get(1) / totalWeight;
+        double grpTwoWeight = ratio.get(2) / totalWeight;
+        double grpThreeWeight = ratio.get(3) / totalWeight;
+        double grpFourWeight = ratio.get(4) / totalWeight;
+        double e = grpOneWeight + grpTwoWeight * 2 + grpThreeWeight * 3 + grpFourWeight * 4;
         customerGroupArriveRate = parameters.customerArriveRate() / e;
     }
 

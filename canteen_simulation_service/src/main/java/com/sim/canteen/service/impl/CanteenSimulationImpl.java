@@ -2,6 +2,7 @@ package com.sim.canteen.service.impl;
 
 import com.sim.canteen.dto.response.DashboardResponse;
 import com.sim.canteen.dto.response.HistoryPointDto;
+import com.sim.canteen.dto.response.HistoryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.enums.CustomerState;
@@ -10,7 +11,6 @@ import com.sim.canteen.enums.SimulationState;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.simulation.CustomerArrival;
 import com.sim.canteen.simulation.SimulationData;
-import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -58,7 +58,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         if (data == null) {
             return ResumeSimulationRst.dataNotReady;
         }
-        if(data.finished) {
+        if (data.finished) {
             return ResumeSimulationRst.simulationFinished;
         }
         running = true;
@@ -81,18 +81,33 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         var simulationState = running ? SimulationState.started :
                 (shutdown || data == null ? SimulationState.pending : SimulationState.paused);
 
-        if(data == null) {
+        if (data == null) {
             return new DashboardResponse(
                     simulationState,
-                    List.of(),
+                    new HistoryPointDto(
+                            0.0, 0.0,
+                            0.0, 0.0,
+                            0.0, 0.0, 0.0
+                    ),
                     List.of(),
                     List.of()
             );
         }
 
+        HistoryPointDto latestHistory;
+        if(data.historyPoints.isEmpty()) {
+            latestHistory = new HistoryPointDto(
+                0.0, 0.0,
+                0.0, 0.0,
+                0.0, 0.0, 0.0
+            );
+        } else {
+            latestHistory = data.historyPoints.getLast();
+        }
+
         return new DashboardResponse(
                 simulationState,
-                new ArrayList<>(data.historyPoints),
+                latestHistory,
                 data.windows
                         .stream()
                         .map(window -> window.queue.size())
@@ -100,6 +115,50 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 data.seats
                         .stream()
                         .map(seat -> seat.customers.size()).collect(Collectors.toCollection(ArrayList::new))
+        );
+    }
+
+    @Override
+    public synchronized HistoryResponse getRecentHistory(int limit, int begin) {
+        var size = data.historyPoints.size();
+        if (begin >= size) {
+            return new HistoryResponse(
+                    List.of(),
+                    size,
+                    0,
+                    false
+            );
+        }
+        begin = Math.max(size - limit, begin);
+        return new HistoryResponse(
+                data.historyPoints.subList(begin, size),
+                begin,
+                size - begin,
+                false
+        );
+    }
+
+    @Override
+    public synchronized HistoryResponse getRangeHistory(int begin, int count) {
+        var size = data.historyPoints.size();
+        if (begin >= size) {
+            return new HistoryResponse(
+                    List.of(),
+                    size,
+                    0,
+                    false
+            );
+        }
+        var hasMore = true;
+        if (begin + count >= size) {
+            count =  size - begin;
+            hasMore = false;
+        }
+        return new HistoryResponse(
+                data.historyPoints.subList(begin, begin + count),
+                begin,
+                count,
+                hasMore
         );
     }
 
@@ -146,14 +205,13 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
             var timeLeap = ((double) Duration.between(lastUpdate, Instant.now()).toNanos() / 1_000_000_000) * simulationSpeed;
             data.time += timeLeap;
-            data.finished = false;
-            if(data.time >= data.para.simulationTotalMinutes() * 60) {
+            if (data.time >= data.para.simulationTotalMinutes() * 60) {
                 data.time = data.para.simulationTotalMinutes() * 60;
                 data.finished = true;
             }
             simulationThreadTick();
             lastUpdate = Instant.now();
-            if(data.finished) {
+            if (data.finished) {
                 running = false;
             }
         }
@@ -234,7 +292,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     if (customer.eatEndTime <= data.time) {
                         // 检查组，删除组
                         var group = data.customerGroups.get(customer.groupId);
-                        group.remove(Integer.valueOf(customer.id));
+                        group.removeIf(i -> i == customer.id);
                         if (group.isEmpty()) {
                             data.customerGroups.remove(customer.groupId);
                         }
@@ -265,7 +323,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     .map(customer -> customer.groupId)
                     .collect(Collectors.toCollection(HashSet::new));
 
-            var seatsByOccupation = data.seats.reversed().stream().collect(Collectors.groupingBy(seat -> seat.customers.size()));
+            var seatsByOccupation = data.seats.stream().collect(Collectors.groupingBy(seat -> seat.customers.size()));
             var seatsOfThree = seatsByOccupation.getOrDefault(3, List.of());
             var seatsOfTwo = seatsByOccupation.getOrDefault(2, List.of());
             var seatsOfOne = seatsByOccupation.getOrDefault(1, List.of());
