@@ -91,10 +91,10 @@ const initialParameters: SimulationParameters = {
         B: 35,
         C: 25,
     },
-    customerEatSecondsAvg: 24,
-    customerEatSecondsStdVar: 4,
-    dishPrepSecondsAvg: 3.5,
-    dishPrepSecondsStdVar: 0.8,
+    customerEatSecondsAvg: 1800,
+    customerEatSecondsStdVar: 120,
+    dishPrepSecondsAvg: 180,
+    dishPrepSecondsStdVar: 30,
     windows: [
         { dishType: 'A', windowPrepTimeModifier: 1 },
         { dishType: 'B', windowPrepTimeModifier: 1 },
@@ -177,6 +177,39 @@ function renderBars(values: number[], maxValue = 1) {
     )
 }
 
+
+function numberInputField(
+    { label, initial, callback, min, max, step, unit }:
+        {
+            label: string;
+            initial: number;
+            callback: (value: number) => void;
+            min?: number;
+            max?: number;
+            step?: number;
+            unit?: string;
+        }) {
+
+    const [value, setValue] = useState(initial);
+    return <label>
+        {label}
+        <input
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={
+                event => {
+                    const v = Number(event.target.value);
+                    setValue(v);
+                    callback(v);
+                }
+            }
+        />
+        {unit ? <span>{unit}</span> : null}
+    </label>;
+}
 
 export default function App() {
     const [online, setOnline] = useState(false)
@@ -658,132 +691,107 @@ export default function App() {
                             )}
 
                             <div className="form-grid">
-                                <label>
-                                    仿真总时长
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={parameters.simulationTotalMinutes}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                simulationTotalMinutes: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                    <span>分钟</span>
-                                </label>
-
-                                <label>
-                                    顾客到达率
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
-                                        value={parameters.customerArriveRate}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                customerArriveRate: Number(event.target.value) * 60,
-                                            })
-                                        }
-                                    />
-                                    <span>人/分钟</span>
-                                </label>
-
-                                <label>
-                                    平均做餐时间
-                                    <input
-                                        type="number"
-                                        min="0.1"
-                                        step="0.1"
-                                        value={parameters.dishPrepSecondsAvg}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                dishPrepSecondsAvg: Number(event.target.value) * 60,
-                                            })
-                                        }
-                                    />
-                                    <span>分钟</span>
-                                </label>
-
-                                <label>
-                                    做餐时间标准差
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
-                                        value={parameters.dishPrepSecondsStdVar}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                dishPrepSecondsStdVar: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                </label>
-
-                                <label>
-                                    平均就餐时间
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        step="1"
-                                        value={parameters.customerEatSecondsAvg}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                customerEatSecondsAvg: Number(event.target.value) * 60,
-                                            })
-                                        }
-                                    />
-                                    <span>分钟</span>
-                                </label>
-
-                                <label>
-                                    就餐时间标准差
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
-                                        value={parameters.customerEatSecondsStdVar}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                customerEatSecondsStdVar: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                </label>
-
-                                <label>
-                                    窗口数量
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="20"
-                                        value={parameters.windows.length}
-                                        onChange={(event) => changeWindowCount(Number(event.target.value))}
-                                    />
-                                    <span>个</span>
-                                </label>
-
-                                <label>
-                                    座位数量
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={parameters.seatCount}
-                                        onChange={(event) =>
-                                            setParameters({
-                                                ...parameters,
-                                                seatCount: Number(event.target.value),
-                                            })
-                                        }
-                                    />
-                                    <span>个</span>
-                                </label>
+                                {
+                                    numberInputField({
+                                        label: "仿真总时长",
+                                        initial: parameters.simulationTotalMinutes,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            simulationTotalMinutes: v,
+                                        }),
+                                        min: 1,
+                                        step: 1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "顾客到达率",
+                                        initial: parameters.customerArriveRate * 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            customerArriveRate: v / 60,
+                                        }),
+                                        min: 0,
+                                        step: 0.1,
+                                        unit: "人/分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "平均做餐时间",
+                                        initial: parameters.dishPrepSecondsAvg / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            dishPrepSecondsAvg: v * 60,
+                                        }),
+                                        min: 0.1,
+                                        step: 0.1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "做餐时间标准差",
+                                        initial: parameters.dishPrepSecondsStdVar / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            dishPrepSecondsStdVar: v * 60,
+                                        }),
+                                        min: 0,
+                                        step: 0.1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "平均就餐时间",
+                                        initial: parameters.customerEatSecondsAvg / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            customerEatSecondsAvg: v * 60,
+                                        }),
+                                        min: 1,
+                                        step: 0.5,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "就餐时间标准差",
+                                        initial: parameters.customerEatSecondsStdVar / 60,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            customerEatSecondsStdVar: v * 60,
+                                        }),
+                                        min: 0,
+                                        step: 0.1,
+                                        unit: "分钟"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "窗口数量",
+                                        initial: parameters.windows.length,
+                                        callback: v => changeWindowCount(v),
+                                        min: 3,
+                                        step: 1,
+                                        unit: "个"
+                                    })
+                                }
+                                {
+                                    numberInputField({
+                                        label: "座位数量",
+                                        initial: parameters.seatCount,
+                                        callback: v => setParameters({
+                                            ...parameters,
+                                            seatCount: v,
+                                        }),
+                                        min: 3,
+                                        step: 1,
+                                        unit: "个"
+                                    })
+                                }
                             </div>
                         </div>
                     </section>
