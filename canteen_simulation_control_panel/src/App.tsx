@@ -845,7 +845,7 @@ export default function App() {
 
                             <div className="chart-grid">
                                 <div className="chart-card" style={{ gridColumn: '1 / -1', minHeight: 360 }}>
-                                    <h3>仿真历史总览（7 项指标展示）</h3>
+                                    <h3>仿真历史总览（7 项指标归一化展示）</h3>
                                     {renderHistoryOverview(recentHistory)}
                                 </div>
                             </div>
