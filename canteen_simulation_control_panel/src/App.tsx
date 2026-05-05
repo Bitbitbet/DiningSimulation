@@ -20,6 +20,7 @@ type HistoryPoint = {
 type DashboardResponse = {
     simulationState: string
     currentHistory: HistoryPoint
+    finished: boolean
     windowsQueueSizes: number[]
     seatOccupation: number[]
 }
@@ -66,6 +67,7 @@ const emptyDashboard: DashboardResponse = {
         seatIdleRate: 0,
         congestionRate: 0,
     },
+    finished: false,
     windowsQueueSizes: [],
     seatOccupation: [],
 }
@@ -218,6 +220,7 @@ export default function App() {
         if (dashboardLoading) {
             return;
         }
+        console.log("UPDATING DASHBOARDDD")
         setDashboardLoading(true);
         try {
             const response = await fetchWithTimeout(`${API_BASE}/dashboard`, undefined, 5000).then(r => {
@@ -338,46 +341,6 @@ export default function App() {
         return ''
     }
 
-    const callSimulation = async (path: string) => {
-        if (path === '/simulation/resume' && !hasSelectedSimulationData) {
-            setNotice('请先在“仿真数据管理”中新建或选择一份仿真数据。')
-            return
-        }
-
-        setLoading(true)
-
-        try {
-            const response = await fetch(`${API_BASE}${path}`, {
-                method: 'POST',
-            })
-
-            if (!response.ok) {
-                setNotice(`请求失败：${path}`)
-                return
-            }
-
-            const result = await response.json().catch(() => null)
-
-            if (result && typeof result === 'object') {
-                setDashboard((old) => ({
-                    ...old,
-                    ...result,
-                    history: Array.isArray(result.history) ? result.history : old.history,
-                    windowsQueueSizes: Array.isArray(result.windowsQueueSizes)
-                        ? result.windowsQueueSizes
-                        : old.windowsQueueSizes,
-                    seatOccupation: Array.isArray(result.seatOccupation) ? result.seatOccupation : old.seatOccupation,
-                }))
-            }
-
-            setNotice('操作成功。')
-            await refreshAll()
-        } catch {
-            setNotice('操作失败，请检查后端接口或控制台报错。')
-        } finally {
-            setLoading(false)
-        }
-    }
     const deleteSimulationData = async (id: number) => {
         const confirmed = window.confirm(`确定要删除 Simulation #${id} 吗？`)
 
@@ -487,6 +450,53 @@ export default function App() {
         setNotice('当前 dashboard 数据已下载。')
     }
 
+    const resumeSimuation = async () => {
+        if (loading) {
+            return;
+        }
+        setLoading(true)
+
+        try {
+            const response = await fetch(`${API_BASE}/simulation/resume`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to resume")
+            }
+
+            setNotice('操作成功。')
+            await updateDashboard()
+        } catch {
+            setNotice('操作失败，请检查后端接口或控制台报错。')
+        } finally {
+            setLoading(false)
+        }
+    }
+    const pauseSimuation = async () => {
+        if (loading) {
+            return;
+        }
+        setLoading(true)
+
+        try {
+            const response = await fetch(`${API_BASE}/simulation/pause`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to pause")
+            }
+
+            setNotice('操作成功。')
+            await updateDashboard()
+        } catch {
+            setNotice('操作失败，请检查后端接口或控制台报错。')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const changeWindowCount = (count: number) => {
         const safeCount = Math.max(1, Math.min(20, count))
         const nextWindows = [...parameters.windows]
@@ -519,18 +529,6 @@ export default function App() {
                             <span>控制面板</span>
                         </div>
                     </div>
-
-                    <nav>
-                        <button className="nav-item active" type="button">
-                            数据面板
-                        </button>
-                        <button className="nav-item" type="button">
-                            仿真控制
-                        </button>
-                        <button className="nav-item" type="button">
-                            数据管理
-                        </button>
-                    </nav>
 
                     <div className={serviceOnline ? 'status-dot online' : 'status-dot offline'}>
                         <span />
@@ -618,7 +616,6 @@ export default function App() {
                             <div className="panel-head compact">
                                 <div>
                                     <h2>仿真控制</h2>
-                                    <p>开始与继续统一调用后端 /api/simulation/resume。</p>
                                 </div>
                             </div>
 
@@ -626,8 +623,8 @@ export default function App() {
                                 <button
                                     className="primary-button"
                                     type="button"
-                                    onClick={() => callSimulation('/simulation/resume')}
-                                    disabled={loading || !hasSelectedSimulationData}
+                                    onClick={resumeSimuation}
+                                    disabled={loading || !hasSelectedSimulationData || dashboard.finished}
                                     title={!hasSelectedSimulationData ? '请先新建或选择仿真数据' : '开始或继续仿真'}
                                 >
                                     开始
@@ -636,18 +633,10 @@ export default function App() {
                                 <button
                                     className="secondary-button"
                                     type="button"
-                                    onClick={() => callSimulation('/simulation/pause')}
+                                    onClick={pauseSimuation}
                                     disabled={loading}
                                 >
                                     暂停
-                                </button>
-
-                                <button
-                                    className="secondary-button"
-                                    type="button"
-                                    onClick={() => setNotice('后端暂未提供 reset 接口。')}
-                                >
-                                    重置
                                 </button>
                             </div>
 
@@ -783,10 +772,6 @@ export default function App() {
                                     <span>个</span>
                                 </label>
                             </div>
-
-                            <button className="wide-button" type="button" onClick={saveParameters} disabled={loading}>
-                                保存仿真参数
-                            </button>
                         </div>
                     </section>
 
@@ -975,7 +960,7 @@ export default function App() {
                         </div>
                     </section>
                 </section>
-            </main>
+            </main >
         </>
     )
 }

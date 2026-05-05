@@ -5,7 +5,6 @@ import com.sim.canteen.dto.response.DashboardResponse;
 import com.sim.canteen.dto.response.HistoryResponse;
 import com.sim.canteen.dto.response.SimulationDataQueryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
-import com.sim.canteen.enums.ResumeSimulationRst;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.service.SimulationDataManager;
 import org.springframework.http.ResponseEntity;
@@ -57,19 +56,25 @@ public class CanteenController {
     }
 
     @PostMapping("/simulation/pause")
-    public DashboardResponse pauseSimulation() {
+    public void pauseSimulation() {
         canteenSimulation.pauseSimulation();
-        return canteenSimulation.getDashboardResponse();
     }
 
     @PostMapping("/simulation/resume")
-    public ResponseEntity<DashboardResponse> resumeSimulation() {
-        return switch(canteenSimulation.resumeSimulation()) {
-            case ResumeSimulationRst.dataNotReady -> ResponseEntity.badRequest().build();
-            case ResumeSimulationRst.simulationFinished -> ResponseEntity
-                    .badRequest().body(canteenSimulation.getDashboardResponse());
-            case ResumeSimulationRst.success -> ResponseEntity.ok(canteenSimulation.getDashboardResponse());
-        };
+    public ResponseEntity<?> resumeSimulation() {
+        if(canteenSimulation.resumeSimulation()) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    @PostMapping("/simulation/speed")
+    public ResponseEntity<?> setSimulationSpeed(@RequestParam double speed) {
+        if(speed <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        canteenSimulation.setSimulationSpeed(speed);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/data/new")

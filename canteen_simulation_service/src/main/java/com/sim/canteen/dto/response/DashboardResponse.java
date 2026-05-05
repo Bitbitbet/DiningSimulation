@@ -7,6 +7,7 @@ import java.util.List;
 public record DashboardResponse(
         SimulationState simulationState,
         HistoryPointDto currentHistory,
+        boolean finished,
         List<Integer> windowsQueueSizes,
         List<Integer> seatOccupation
 ) {

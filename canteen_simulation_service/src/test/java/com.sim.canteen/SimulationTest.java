@@ -45,7 +45,7 @@ public class SimulationTest {
                                 0.0, 0.0,
                                 0.0, 0.0,
                                 0.0, 0.0, 0.0
-                        ),
+                        ),false,
                         List.of(), List.of()
                 ));
     }

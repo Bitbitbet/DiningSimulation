@@ -6,7 +6,6 @@ import com.sim.canteen.dto.response.HistoryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.enums.CustomerState;
-import com.sim.canteen.enums.ResumeSimulationRst;
 import com.sim.canteen.enums.SimulationState;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.simulation.CustomerArrival;
@@ -26,23 +25,16 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     static final int TICK_PER_SECOND = 10;
     private final Object pauseLock = new Object();
 
-    private volatile boolean running;
-    private volatile boolean shutdown;
-    private volatile double simulationSpeed;
+    private volatile boolean running = false;
+    private volatile boolean shutdown = false;
+    private volatile double simulationSpeed = 1;
     private volatile SimulationData data = null;
 
     private volatile Instant lastUpdate;
 
     public CanteenSimulationImpl() {
-        resetSimulation();
         // Start the worker thread
         new Thread(this::simulationThreadRun).start();
-    }
-
-    public void resetSimulation() {
-        running = false;
-        shutdown = false;
-        simulationSpeed = 1;
     }
 
     @Override
@@ -54,12 +46,15 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     }
 
     @Override
-    public ResumeSimulationRst resumeSimulation() {
+    public boolean resumeSimulation() {
         if (data == null) {
-            return ResumeSimulationRst.dataNotReady;
+            return false;
         }
         if (data.finished) {
-            return ResumeSimulationRst.simulationFinished;
+            return false;
+        }
+        if(running) {
+            return true;
         }
         running = true;
         lastUpdate = Instant.now();
@@ -68,11 +63,14 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             pauseLock.notifyAll();
         }
 
-        return ResumeSimulationRst.success;
+        return true;
     }
 
     @Override
     public synchronized void setSimulationData(SimulationData simulationData) {
+        if(simulationData == null) {
+            running = false;
+        }
         this.data = simulationData;
     }
 
@@ -89,6 +87,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                             0.0, 0.0,
                             0.0, 0.0, 0.0
                     ),
+                    false,
                     List.of(),
                     List.of()
             );
@@ -108,6 +107,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         return new DashboardResponse(
                 simulationState,
                 latestHistory,
+                data.finished,
                 data.windows
                         .stream()
                         .map(window -> window.queue.size())
@@ -169,6 +169,11 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         synchronized (pauseLock) {
             pauseLock.notifyAll();
         }
+    }
+
+    @Override
+    public void setSimulationSpeed(double speed) {
+        this.simulationSpeed = speed;
     }
 
     @Override
@@ -298,7 +303,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                         }
 
                         var seat = data.seats.get(customer.seatId);
-                        seat.customers.remove(customer.id);
+                        seat.customers.removeIf(i -> i == customer.id);
                         switch (seat.customers.size()) {
                             case 0:
                                 seat.fourFreeSince = customer.eatEndTime;
