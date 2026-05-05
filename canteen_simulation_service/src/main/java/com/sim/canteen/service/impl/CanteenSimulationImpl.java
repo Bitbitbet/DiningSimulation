@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -262,7 +263,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                     .filter(customer -> customer.state == CustomerState.WaitingForSeat)
                     .sorted(Comparator.comparingDouble(customerEntity -> customerEntity.startWaitingForSeatTime))
                     .map(customer -> customer.groupId)
-                    .collect(Collectors.toCollection(ArrayList::new));
+                    .collect(Collectors.toCollection(HashSet::new));
 
             var seatsByOccupation = data.seats.reversed().stream().collect(Collectors.groupingBy(seat -> seat.customers.size()));
             var seatsOfThree = seatsByOccupation.getOrDefault(3, List.of());
