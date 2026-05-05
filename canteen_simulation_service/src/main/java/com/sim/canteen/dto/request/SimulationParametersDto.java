@@ -16,7 +16,7 @@ public record SimulationParametersDto(
         double customerEatSecondsStdVar,
 
         double dishPrepSecondsAvg,
-        double dishPrepTimeSecondsVar,
+        double dishPrepSecondsStdVar,
 
         List<WindowParametersDto> windows,
         int seatCount

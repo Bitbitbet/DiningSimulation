@@ -88,7 +88,7 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         if(parameters.dishPrepSecondsAvg() <= 0) {
             return false;
         }
-        if(parameters.dishPrepTimeSecondsVar() <= 0) {
+        if(parameters.dishPrepSecondsStdVar() <= 0) {
             return false;
         }
         if(!parameters.windows()

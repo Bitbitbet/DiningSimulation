@@ -194,7 +194,7 @@ export default function App() {
 
     const updateStatus = async () => {
         if (serviceOnlineLoading) {
-            return;
+            return
         }
         setServiceOnlineLoading(true);
         try {
@@ -212,6 +212,9 @@ export default function App() {
         }
     };
     const updateDashboard = async () => {
+        if (!serviceOnline) {
+            return;
+        }
         if (dashboardLoading) {
             return;
         }
@@ -231,6 +234,9 @@ export default function App() {
         }
     }
     const updateDataList = async () => {
+        if (!serviceOnline) {
+            return;
+        }
         if (dataListLoading) {
             return;
         }
@@ -252,10 +258,21 @@ export default function App() {
 
     useEffect(() => {
         updateStatus();
-        const timer = window.setInterval(updateStatus, 2000);
+        const timerStatus = setInterval(updateStatus, 2000);
+        const timerDashboard = setInterval(updateDashboard, 1000);
 
-        return () => window.clearInterval(timer)
+        return () => {
+            clearInterval(timerStatus);
+            clearInterval(timerDashboard);
+        }
     }, [])
+
+    useEffect(() => {
+        if (serviceOnline) {
+            updateDashboard();
+            updateDataList();
+        }
+    }, [serviceOnline])
 
 
     const formatedTime = formatTime(dashboard.currentHistory.time);
@@ -394,6 +411,10 @@ export default function App() {
         const errorMessage = validateParameters()
         if (errorMessage) {
             setNotice(errorMessage)
+            return
+        }
+
+        if (loading) {
             return
         }
 

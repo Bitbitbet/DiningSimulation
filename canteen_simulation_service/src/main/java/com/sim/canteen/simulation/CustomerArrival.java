@@ -41,7 +41,7 @@ public class CustomerArrival {
 
     private static double randomDishPrepSeconds(SimulationData data) {
         var sec = ThreadLocalRandom.current()
-                .nextGaussian(data.para.dishPrepSecondsAvg(), data.para.dishPrepTimeSecondsVar());
+                .nextGaussian(data.para.dishPrepSecondsAvg(), data.para.dishPrepSecondsStdVar());
         if (sec <= 0)
             sec = data.para.dishPrepSecondsAvg();
 
