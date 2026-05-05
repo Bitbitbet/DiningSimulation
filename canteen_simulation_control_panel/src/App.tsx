@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './index.css'
 
 const API_BASE = 'http://localhost:23456/api'
@@ -179,12 +179,15 @@ function renderBars(values: number[], maxValue = 1) {
 
 
 export default function App() {
-    const [serviceOnline, setServiceOnline] = useState(false)
-    const [serviceOnlineLoading, setServiceOnlineLoading] = useState(false);
+    const [online, setOnline] = useState(false)
+    const onlineRef = useRef(online);
+    const [onlineLoading, setOnlineLoading] = useState(false);
+    const onlineLoadingRef = useRef(onlineLoading);
     const [loading, setLoading] = useState(false)
 
     const [dashboard, setDashboard] = useState<DashboardResponse>(emptyDashboard)
     const [dashboardLoading, setDashboardLoading] = useState(false);
+    const dashboardLoadingRef = useRef(dashboardLoading);
 
     const [dataList, setDataList] = useState<SimulationDataQueryResponse>(emptyDataList)
     const [dataListLoading, setDataListLoading] = useState(false);
@@ -194,11 +197,21 @@ export default function App() {
 
     const hasSelectedSimulationData = dataList.selected != null
 
-    const updateStatus = async () => {
-        if (serviceOnlineLoading) {
+    useEffect(() => {
+        onlineRef.current = online;
+    }, [online]);
+    useEffect(() => {
+        onlineLoadingRef.current = onlineLoading;
+    }, [onlineLoading]);
+    useEffect(() => {
+        dashboardLoadingRef.current = dashboardLoading;
+    }, [dashboardLoading]);
+
+    const updateStatus = useCallback(async () => {
+        if (onlineLoadingRef.current) {
             return
         }
-        setServiceOnlineLoading(true);
+        setOnlineLoading(true);
         try {
             let response = await fetchWithTimeout(`${API_BASE}/status`, undefined, 3000).then(r => {
                 if (!r.ok) throw new Error("Response not ok");
@@ -206,18 +219,18 @@ export default function App() {
                 return r.json() as Promise<StatusResponse>;
             });
 
-            setServiceOnline(response.online);
+            setOnline(response.online);
         } catch (_) {
-            setServiceOnline(false);
+            setOnline(false);
         } finally {
-            setServiceOnlineLoading(false);
+            setOnlineLoading(false);
         }
-    };
-    const updateDashboard = async () => {
-        if (!serviceOnline) {
+    }, []);
+    const updateDashboard = useCallback(async () => {
+        if (!onlineRef.current) {
             return;
         }
-        if (dashboardLoading) {
+        if (dashboardLoadingRef.current) {
             return;
         }
         console.log("UPDATING DASHBOARDDD")
@@ -235,9 +248,9 @@ export default function App() {
         } finally {
             setDashboardLoading(false);
         }
-    }
+    }, []);
     const updateDataList = async () => {
-        if (!serviceOnline) {
+        if (!online) {
             return;
         }
         if (dataListLoading) {
@@ -271,11 +284,11 @@ export default function App() {
     }, [])
 
     useEffect(() => {
-        if (serviceOnline) {
+        if (online) {
             updateDashboard();
             updateDataList();
         }
-    }, [serviceOnline])
+    }, [online])
 
 
     const formatedTime = formatTime(dashboard.currentHistory.time);
@@ -530,9 +543,9 @@ export default function App() {
                         </div>
                     </div>
 
-                    <div className={serviceOnline ? 'status-dot online' : 'status-dot offline'}>
+                    <div className={online ? 'status-dot online' : 'status-dot offline'}>
                         <span />
-                        {serviceOnline ? '后端在线' : '后端离线'}
+                        {online ? '后端在线' : '后端离线'}
                     </div>
                 </aside>
 
