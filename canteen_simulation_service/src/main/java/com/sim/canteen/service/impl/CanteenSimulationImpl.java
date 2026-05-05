@@ -120,6 +120,9 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
     @Override
     public synchronized HistoryResponse getRecentHistory(int limit, int begin) {
+        if(data == null) {
+            throw new RuntimeException("Data is null");
+        }
         var size = data.historyPoints.size();
         if (begin >= size) {
             return new HistoryResponse(
@@ -140,6 +143,9 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
     @Override
     public synchronized HistoryResponse getRangeHistory(int begin, int count) {
+        if(data == null) {
+            throw new RuntimeException("Data is null");
+        }
         var size = data.historyPoints.size();
         if (begin >= size) {
             return new HistoryResponse(
