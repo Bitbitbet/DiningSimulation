@@ -381,20 +381,20 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                         var waitForSeatSeconds = takeSeatTime - customer.startWaitingForSeatTime;
 
                         // 累积计算顾客等待座位时长的平均
-                        data.customerWaitSeatSecAvg =
-                                (data.customerWaitSeatSecAvg * data.customerWaitSeatSampleCnt + waitForSeatSeconds)
-                                        / (data.customerWaitSeatSampleCnt + 1);
-                        data.customerWaitSeatSampleCnt += 1;
+                        data.leftCustomerWaitSeatSecAvg =
+                                (data.leftCustomerWaitSeatSecAvg * data.leftCustomerWaitSeatSampleCnt + waitForSeatSeconds)
+                                        / (data.leftCustomerWaitSeatSampleCnt + 1);
+                        data.leftCustomerWaitSeatSampleCnt += 1;
                     }
                 }
             }
             if (!recheck) break;
         }
-        var historyPoint = calculateHistory();
+        var historyPoint = calculateHistoryPoint();
         data.historyPoints.add(historyPoint);
     }
 
-    private HistoryPointDto calculateHistory() {
+    private HistoryPointDto calculateHistoryPoint() {
         // 计算平均队列长度
         int queueLength = 0;
         int busyWindows = 0;
@@ -408,7 +408,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         double chefUtilization = (double) busyWindows / data.windows.size();
         double seatTurnover = 0;
         if (data.time != 0) {
-            seatTurnover = (double) data.leftCustomers / data.time / data.seats.size();
+            seatTurnover = (double) data.leftCustomers / data.time / (data.seats.size() * 4);
         }
 
         // 计算空置的座位
@@ -420,24 +420,32 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
         // 计算等待座位的顾客 和 吃饭中的顾客
         int waitingSeatsCustomers = 0;
+        double currentWaitSeatSecsTotal = 0.0;
         int eatingCustomers = 0;
         for (var customer : data.customers.values()) {
             if (customer.state == CustomerState.WaitingForSeat) {
                 waitingSeatsCustomers++;
+                currentWaitSeatSecsTotal += data.time - customer.startWaitingForSeatTime;
             }
             if (customer.state == CustomerState.Eating) {
                 eatingCustomers++;
             }
         }
+        double averageCustomerWaitSeatSeconds = (
+                data.leftCustomerWaitSeatSecAvg * data.leftCustomerWaitSeatSampleCnt
+                + currentWaitSeatSecsTotal) / (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers);
         double congestionRate = 0;
         if (eatingCustomers != 0) {
-            congestionRate = (double) waitingSeatsCustomers / eatingCustomers;
+            congestionRate = (double) waitingSeatsCustomers / (data.seats.size() * 4);
         }
+
+        // 计算所有顾客的等待座位时长
+
 
         return new HistoryPointDto(
                 data.time,
                 averageQueueLength,
-                data.customerWaitSeatSecAvg,
+                averageCustomerWaitSeatSeconds,
                 chefUtilization,
                 seatTurnover,
                 seatIdleRate,

@@ -30,10 +30,10 @@ public class SimulationData {
     // 顾客组索引
     public final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
 
-    // 平均顾客等待座位时间
-    public double customerWaitSeatSecAvg = 0.0;
-    // 平均顾客等待座位时间这一项统计的人数
-    public int customerWaitSeatSampleCnt = 0;
+    // 已经开始吃饭或离开的顾客等待座位时间
+    public double leftCustomerWaitSeatSecAvg = 0.0;
+    // 已经开始吃饭或离开的顾客等待座位时间这一项统计的人数
+    public int leftCustomerWaitSeatSampleCnt = 0;
 
     // 吃饱离开的顾客总数
     public int leftCustomers = 0;
