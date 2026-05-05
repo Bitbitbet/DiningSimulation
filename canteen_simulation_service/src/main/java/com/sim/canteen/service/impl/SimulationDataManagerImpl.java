@@ -122,6 +122,10 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
     public boolean deleteSimulationData(int id) {
         if(!datas.containsKey(id))
             return false;
+        if(selectedSimulationData == datas.get(id)) {
+            selectedSimulationData = null;
+        }
+        canteenSimulation.setSimulationData(null);
         datas.remove(id);
         return true;
     }
