@@ -53,7 +53,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         if (data.finished) {
             return false;
         }
-        if(running) {
+        if (running) {
             return true;
         }
         running = true;
@@ -68,7 +68,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
     @Override
     public synchronized void setSimulationData(SimulationData simulationData) {
-        if(simulationData == null) {
+        if (simulationData == null) {
             running = false;
         }
         this.data = simulationData;
@@ -94,11 +94,11 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
 
         HistoryPointDto latestHistory;
-        if(data.historyPoints.isEmpty()) {
+        if (data.historyPoints.isEmpty()) {
             latestHistory = new HistoryPointDto(
-                0.0, 0.0,
-                0.0, 0.0,
-                0.0, 0.0, 0.0
+                    0.0, 0.0,
+                    0.0, 0.0,
+                    0.0, 0.0, 0.0
             );
         } else {
             latestHistory = data.historyPoints.getLast();
@@ -120,6 +120,9 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
     @Override
     public synchronized HistoryResponse getRecentHistory(int limit, int begin) {
+        if (data == null) {
+            throw new RuntimeException("Data is null");
+        }
         var size = data.historyPoints.size();
         if (begin >= size) {
             return new HistoryResponse(
@@ -140,6 +143,9 @@ public class CanteenSimulationImpl implements CanteenSimulation {
 
     @Override
     public synchronized HistoryResponse getRangeHistory(int begin, int count) {
+        if(data == null) {
+            throw new RuntimeException("Data is null");
+        }
         var size = data.historyPoints.size();
         if (begin >= size) {
             return new HistoryResponse(
@@ -151,7 +157,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
         var hasMore = true;
         if (begin + count >= size) {
-            count =  size - begin;
+            count = size - begin;
             hasMore = false;
         }
         return new HistoryResponse(
@@ -422,7 +428,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
         double averageCustomerWaitSeatSeconds = (
                 data.leftCustomerWaitSeatSecAvg * data.leftCustomerWaitSeatSampleCnt
-                + currentWaitSeatSecsTotal) / (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers);
+                        + currentWaitSeatSecsTotal) / (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers);
         double congestionRate = (double) waitingSeatsCustomers / (data.seats.size() * 4);
 
 
