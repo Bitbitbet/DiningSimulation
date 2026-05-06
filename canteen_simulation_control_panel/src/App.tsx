@@ -127,8 +127,10 @@ function NumberInputField(
         }) {
 
     const [value, setValue] = useState(initial);
-    return <label>
-        {label}
+    return <div className="">
+        <label>
+            {label}
+        </label>
         <input
             type="number"
             min={min}
@@ -144,7 +146,7 @@ function NumberInputField(
             }
         />
         {unit ? <span>{unit}</span> : null}
-    </label>;
+    </div>;
 }
 
 function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs = 5000) {
@@ -602,7 +604,6 @@ export default function App() {
             }
 
             showToast(`已删除仿真数据：${simData.name}`)
-            setHistory([])
             await refreshAll()
         } catch {
             showToast('删除数据失败。')
@@ -755,42 +756,42 @@ export default function App() {
         </>
     } else if (page == PageState.DataManagerPage) {
         content = <>
-            <section className="panel-grid">
-                <div className="panel-card">
-                    <div className="panel-head">
-                        <h2>仿真数据管理</h2>
-                    </div>
-                    <div className="table-wrap">
-                        <table>
-                            <thead>
-                                <tr><th>数据名称</th><th>状态</th><th>操作</th></tr>
-                            </thead>
-                            <tbody>
-                                {dataItems.length > 0 ? dataItems.map((item) => {
-                                    const selected = dataList.selected === item.id
-                                    return (
-                                        <tr key={item.id}>
-                                            <td>{item.name}</td>
-                                            <td>{selected ? '当前选中' : '未选中'}</td>
-                                            <td>
-                                                <div className="action-buttons">
-                                                    <button className="secondary-button" type="button" onClick={() => selectSimulationData(item.id)} disabled={loading}>选择</button>
-                                                    <button className="danger-button" type="button" onClick={() => deleteSimulationData(item.id)} disabled={loading}>删除</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )
-                                }) : (
-                                    <tr><td colSpan={4}>暂无仿真数据，请先点击“新建数据”。</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div className="button-row" style={{ marginTop: 14 }}>
-                        <button className="secondary-button" type="button" onClick={downloadDashboard}>下载数据</button>
-                        <button className="secondary-button" type="button" onClick={refreshAll}>刷新数据</button>
-                    </div>
+            <section className="panel-card">
+                <div className="panel-head">
+                    <h2>仿真数据管理</h2>
                 </div>
+                <div className="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>数据名称</th><th>状态</th><th>操作</th></tr>
+                        </thead>
+                        <tbody>
+                            {dataItems.length > 0 ? dataItems.map((item) => {
+                                const selected = dataList.selected === item.id
+                                return (
+                                    <tr key={item.id}>
+                                        <td>{item.name}</td>
+                                        <td>{selected ? '当前选中' : '未选中'}</td>
+                                        <td>
+                                            <div className="action-buttons">
+                                                <button className="secondary-button" type="button" onClick={() => selectSimulationData(item.id)} disabled={loading}>选择</button>
+                                                <button className="danger-button" type="button" onClick={() => deleteSimulationData(item.id)} disabled={loading}>删除</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            }) : (
+                                <tr><td colSpan={4}>暂无仿真数据，请先点击“新建数据”。</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="button-row" style={{ marginTop: 14 }}>
+                    <button className="primary-button" type="button" onClick={saveParameters} disabled={loading}>新建数据</button>
+                    <button className="secondary-button" type="button" onClick={downloadDashboard}>下载数据</button>
+                    <button className="secondary-button" type="button" onClick={refreshAll}>刷新数据</button>
+                </div>
+
             </section>
             <section className="panel-card full">
                 <div className="form-grid">
@@ -814,46 +815,50 @@ export default function App() {
                         min={1}
                         step={0.1}
                         unit='人/分钟' />
-                    <NumberInputField
-                        label="平均顾客就餐时间"
-                        initial={parameters.customerEatSecondsAvg / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            customerEatSecondsAvg: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
-                    <NumberInputField
-                        label="顾客就餐时间标准差"
-                        initial={parameters.customerEatSecondsStdVar / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            customerEatSecondsStdVar: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
-                    <NumberInputField
-                        label="平均餐品准备时间"
-                        initial={parameters.dishPrepSecondsAvg / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            dishPrepSecondsAvg: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
-                    <NumberInputField
-                        label="餐品准备时间标准差"
-                        initial={parameters.dishPrepSecondsStdVar / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            dishPrepSecondsStdVar: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
+                    <div className="">
+                        <NumberInputField
+                            label="平均顾客就餐时间"
+                            initial={parameters.customerEatSecondsAvg / 60}
+                            onChange={v => setParameters({
+                                ...parameters,
+                                customerEatSecondsAvg: v * 60
+                            })}
+                            min={0.01}
+                            step={0.01}
+                            unit="分钟" />
+                        <NumberInputField
+                            label="顾客就餐时间标准差"
+                            initial={parameters.customerEatSecondsStdVar / 60}
+                            onChange={v => setParameters({
+                                ...parameters,
+                                customerEatSecondsStdVar: v * 60
+                            })}
+                            min={0.01}
+                            step={0.01}
+                            unit="分钟" />
+                    </div>
+                    <div className="">
+                        <NumberInputField
+                            label="平均餐品准备时间"
+                            initial={parameters.dishPrepSecondsAvg / 60}
+                            onChange={v => setParameters({
+                                ...parameters,
+                                dishPrepSecondsAvg: v * 60
+                            })}
+                            min={0.01}
+                            step={0.01}
+                            unit="分钟" />
+                        <NumberInputField
+                            label="餐品准备时间标准差"
+                            initial={parameters.dishPrepSecondsStdVar / 60}
+                            onChange={v => setParameters({
+                                ...parameters,
+                                dishPrepSecondsStdVar: v * 60
+                            })}
+                            min={0.01}
+                            step={0.01}
+                            unit="分钟" />
+                    </div>
                     <NumberInputField
                         label="窗口数量"
                         initial={parameters.windows.length}
@@ -872,13 +877,10 @@ export default function App() {
                         step={1}
                         unit="个" />
                 </div>
-            </section >
-            <section className="panel-card full">
                 <div className="panel-head">
                     <div>
                         <h2>餐品与顾客权重</h2>
                     </div>
-                    <button className="primary-button" type="button" onClick={saveParameters} disabled={loading}>新建数据</button>
                 </div>
                 <div className="form-grid three">
                     {
@@ -942,13 +944,13 @@ export default function App() {
             </aside>
 
             <main className="content">
-                <header className="hero-card">
+                <div className="hero-card">
                     <h1>北平食堂大学食堂就餐仿真系统</h1>
                     <div className="hero-actions">
-                        <span className="chip">当前仿真时钟：{formatTime(currentHistory.time)}</span>
-                        <span className="chip">状态：{localizedState(dashboard.simulationState)}</span>
+                        <div className="chip">时钟：{formatTime(currentHistory.time)}</div>
+                        <div className="chip">状态：{localizedState(dashboard.simulationState)}</div>
                     </div>
-                </header>
+                </div>
                 {content}
             </main>
         </div>
