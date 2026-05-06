@@ -1,6 +1,5 @@
 package com.sim.canteen;
 
-
 import com.sim.canteen.dto.request.SimulationParametersDto;
 import com.sim.canteen.dto.request.WindowParametersDto;
 import com.sim.canteen.dto.response.*;
@@ -21,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
 public class SimulationTest {
@@ -84,5 +84,14 @@ public class SimulationTest {
                         expected,
                         0
                 ));
+    }
+
+    @Test
+    public void canteenSimulation_getRecentHistory_shouldThrow_whenNoData() {
+        assertThatThrownBy(() -> canteenSimulationImpl.getRecentHistory(1000, 0)).isInstanceOf(RuntimeException.class);
+    }
+    @Test
+    public void canteenSimulation_getRangedHistory_shouldThrow_whenNoData() {
+        assertThatThrownBy(() -> canteenSimulationImpl.getRangeHistory(1000, 0)).isInstanceOf(RuntimeException.class);
     }
 }
