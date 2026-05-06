@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
+import { useToast } from './Toast'
 
 const API_BASE = 'http://localhost:23456/api'
 
@@ -115,7 +116,7 @@ const initialParameters: SimulationParameters = {
     ],
     seatCount: 24,
 }
-function numberInputField(
+function NumberInputField(
     { label, initial, onChange, min, max, step, unit }:
         {
             label: string;
@@ -329,16 +330,34 @@ function renderHistoryOverview(history: HistoryPoint[]) {
     )
 }
 
-function App() {
+
+function validateParameters(parameters: SimulationParameters): { valid: true } | { valid: false, reason: string } {
+    if (parameters.simulationTotalMinutes <= 0) return { valid: false, reason: '仿真总时长必须大于 0。' };
+    if (parameters.customerArriveRate < 0) return { valid: false, reason: '顾客到达率不能小于 0。' }
+    if (parameters.customerEatSecondsAvg <= 0) return { valid: false, reason: '平均就餐时间必须大于 0。' }
+    if (parameters.customerEatSecondsStdVar < 0) return { valid: false, reason: '就餐时间标准差不能小于 0。' }
+    if (parameters.dishPrepSecondsAvg <= 0) return { valid: false, reason: '平均做餐时间必须大于 0。' }
+    if (parameters.dishPrepSecondsStdVar < 0) return { valid: false, reason: '做餐时间标准差不能小于 0。' }
+    if (parameters.windows.length <= 0) return { valid: false, reason: '窗口数量必须大于 0。' }
+    if (parameters.seatCount <= 0) return { valid: false, reason: '座位数量必须大于 0。' }
+
+    const invalidWindow = parameters.windows.some((item) => !item.dishType || item.windowPrepTimeModifier <= 0)
+    if (invalidWindow) return { valid: false, reason: '窗口餐品类型不能为空，且窗口效率系数必须大于 0。' }
+
+    return { valid: true }
+}
+
+export default function App() {
     const [online, setOnline] = useState(false)
     const [dashboard, setDashboard] = useState<DashboardResponse>(emptyDashboard)
     const [dataList, setDataList] = useState<SimulationDataQueryResponse>(emptyDataList)
     const [parameters, setParameters] = useState<SimulationParameters>(initialParameters)
     const [history, setHistory] = useState<HistoryPoint[]>([])
-    const [notice, setNotice] = useState('正在连接后端服务...')
     const [loading, setLoading] = useState(false)
     const [historyLoading, setHistoryLoading] = useState(false)
     const [speed, setSpeed] = useState(1)
+
+    const showToast = useToast();
 
     const [page, setPage] = useState<PageState>(PageState.DataManagerPage);
 
@@ -468,28 +487,6 @@ function App() {
         }
     }, [])
 
-    const validateParameters = () => {
-        if (parameters.simulationTotalMinutes <= 0) return '仿真总时长必须大于 0。'
-        if (parameters.customerArriveRate < 0) return '顾客到达率不能小于 0。'
-        if (parameters.customerEatSecondsAvg <= 0) return '平均就餐时间必须大于 0。'
-        if (parameters.customerEatSecondsStdVar < 0) return '就餐时间标准差不能小于 0。'
-        if (parameters.dishPrepSecondsAvg <= 0) return '平均做餐时间必须大于 0。'
-        if (parameters.dishPrepSecondsStdVar < 0) return '做餐时间标准差不能小于 0。'
-        if (parameters.windows.length <= 0) return '窗口数量必须大于 0。'
-        if (parameters.seatCount <= 0) return '座位数量必须大于 0。'
-
-        const dishRatioSum = Object.values(parameters.customerDishRatio).reduce((sum, value) => sum + Number(value), 0)
-        const groupRatioSum = Object.values(parameters.customerGroupSizeRatio).reduce((sum, value) => sum + Number(value), 0)
-
-        if (dishRatioSum <= 0) return '餐品比例之和必须大于 0。'
-        if (groupRatioSum <= 0) return '顾客组比例之和必须大于 0。'
-
-        const invalidWindow = parameters.windows.some((item) => !item.dishType || item.windowPrepTimeModifier <= 0)
-        if (invalidWindow) return '窗口餐品类型不能为空，且窗口效率系数必须大于 0。'
-
-        return ''
-    }
-
     const callPost = async (path: string) => {
         const response = await fetchWithTimeout(`${API_BASE}${path}`, { method: 'POST' }, 8000)
         if (!response.ok) {
@@ -501,7 +498,7 @@ function App() {
 
     const callSimulation = async (path: string) => {
         if (path === '/simulation/resume' && !hasSelectedSimulationData) {
-            setNotice('请先在“仿真数据管理”中新建或选择一份仿真数据。')
+            showToast('请先在“仿真数据管理”中新建或选择一份仿真数据。')
             return
         }
 
@@ -522,19 +519,19 @@ function App() {
                         : old.seatOccupation,
                 }))
             }
-            setNotice('操作成功。')
+            showToast('操作成功。')
             await refreshAll()
         } catch (error) {
-            setNotice(`操作失败：${error instanceof Error ? error.message : '请检查后端接口。'}`)
+            showToast(`操作失败：${error instanceof Error ? error.message : ''}`)
         } finally {
             setLoading(false)
         }
     }
 
     const saveParameters = async () => {
-        const errorMessage = validateParameters()
-        if (errorMessage) {
-            setNotice(errorMessage)
+        const validate = validateParameters(parameters)
+        if (!validate.valid) {
+            showToast(validate.reason)
             return
         }
 
@@ -553,14 +550,14 @@ function App() {
 
             if (!response.ok) {
                 const errorText = await response.text()
-                setNotice(`保存参数失败：${response.status} ${errorText}`)
+                showToast(`保存参数失败：${response.status} ${errorText}`)
                 return
             }
 
-            setNotice('参数已提交后端，并生成新的仿真数据。')
+            showToast('参数已提交后端，并生成新的仿真数据。')
             await refreshAll()
         } catch {
-            setNotice('保存参数失败，请检查后端是否启动。')
+            showToast('保存参数失败。')
         } finally {
             setLoading(false)
         }
@@ -576,15 +573,15 @@ function App() {
 
             if (!response.ok) {
                 const errorText = await response.text()
-                setNotice(`选择数据失败：${response.status} ${errorText}`)
+                showToast(`选择数据失败：${response.status} ${errorText}`)
                 return
             }
 
-            setNotice(`已选择仿真数据：${id}`)
+            showToast(`已选择仿真数据：${id}`)
             setHistory([])
             await refreshAll()
         } catch {
-            setNotice('选择数据失败，请检查后端 /api/data/select 接口。')
+            showToast('选择数据失败。')
         } finally {
             setLoading(false)
         }
@@ -598,15 +595,15 @@ function App() {
             const response = await fetchWithTimeout(`${API_BASE}/data/delete/${id}`, { method: 'POST' }, 8000)
             if (!response.ok) {
                 const errorText = await response.text()
-                setNotice(`删除数据失败：${response.status} ${errorText}`)
+                showToast(`删除数据失败：${response.status} ${errorText}`)
                 return
             }
 
-            setNotice(`已删除仿真数据：${id}`)
+            showToast(`已删除仿真数据：${id}`)
             setHistory([])
             await refreshAll()
         } catch {
-            setNotice('删除数据失败，请检查后端 /api/data/delete/{id} 接口。')
+            showToast('删除数据失败。')
         } finally {
             setLoading(false)
         }
@@ -619,10 +616,10 @@ function App() {
         try {
             const response = await fetchWithTimeout(`${API_BASE}/simulation/speed?speed=${safeSpeed}`, { method: 'POST' }, 5000)
             if (!response.ok) {
-                setNotice('设置仿真速度失败，请确认后端是否提供 /api/simulation/speed。')
+                showToast('设置仿真速度失败。')
             }
         } catch {
-            setNotice('设置仿真速度失败，请确认后端是否提供 /api/simulation/speed。')
+            showToast('设置仿真速度失败。')
         }
     }
 
@@ -656,7 +653,7 @@ function App() {
         link.download = `canteen-dashboard-${Date.now()}.json`
         link.click()
         URL.revokeObjectURL(url)
-        setNotice('当前 dashboard 数据已下载。')
+        showToast('当前 dashboard 数据已下载。')
     }
     let content = <></>;
     if (page == PageState.MonitorPage) {
@@ -706,11 +703,34 @@ function App() {
                             </div>
                         </div>
                     </div>
-                </div><section className="panel-card full">
+                </div>
+
+                <div className="panel-card">
+                    <div className="panel-head">
+                        <div>
+                            <h2>窗口队列状态</h2>
+                        </div>
+                    </div>
+                    <div className="queue-list">
+                        {dashboard.windowsQueueSizes.length > 0 ? dashboard.windowsQueueSizes.map((size, index) => (
+                            <div className="queue-item" key={index}>
+                                <span>窗口 {index}</span>
+                                <strong>{size} 人排队</strong>
+                            </div>
+                        )) : <div className="empty-chart">暂无窗口队列数据</div>}
+                    </div>
+                </div>
+                <section className="panel-card full">
                     <div className="panel-head">
                         <div>
                             <h2>窗口与座位明细</h2>
                         </div>
+                    </div>
+                    <div className="summary-row">
+                        <span>窗口数量：{dashboard.windowsQueueSizes.length}</span>
+                        <span>当前排队人数：{totalQueueLength}</span>
+                        <span>座位数量：{dashboard.seatOccupation.length}</span>
+                        <span>已占座位：{occupiedSeatCount}</span>
                     </div>
                     <div className="table-wrap">
                         <table>
@@ -727,12 +747,6 @@ function App() {
                                 )}
                             </tbody>
                         </table>
-                    </div>
-                    <div className="summary-row">
-                        <span>窗口数量：{dashboard.windowsQueueSizes.length}</span>
-                        <span>当前排队人数：{totalQueueLength}</span>
-                        <span>座位数量：{dashboard.seatOccupation.length}</span>
-                        <span>已占座位：{occupiedSeatCount}</span>
                     </div>
                 </section>
             </section>
@@ -776,130 +790,128 @@ function App() {
                         <button className="secondary-button" type="button" onClick={refreshAll}>刷新数据</button>
                     </div>
                 </div>
-
-                <div className="panel-card">
-                    <div className="panel-head">
-                        <div>
-                            <h2>窗口队列状态</h2>
-                        </div>
-                    </div>
-                    <div className="queue-list">
-                        {dashboard.windowsQueueSizes.length > 0 ? dashboard.windowsQueueSizes.map((size, index) => (
-                            <div className="queue-item" key={index}>
-                                <span>窗口 {index + 1}</span>
-                                <strong>{size} 人排队</strong>
-                            </div>
-                        )) : <div className="empty-chart">暂无窗口队列数据</div>}
-                    </div>
-                </div>
             </section>
-            <div className="form-grid">
-                {numberInputField({
-                    label: "仿真总时长",
-                    initial: parameters.simulationTotalMinutes,
-                    onChange: v => setParameters({
-                        ...parameters,
-                        simulationTotalMinutes: v
-                    }),
-                    min: 1,
-                    step: 0.1,
-                    unit: "分钟"
-                })}
-                {numberInputField({
-                    label: "顾客到达率",
-                    initial: parameters.customerArriveRate * 60,
-                    onChange: v => setParameters({
-                        ...parameters,
-                        customerArriveRate: v / 60
-                    }),
-                    min: 1,
-                    step: 0.1,
-                    unit: "人/分钟"
-                })}
-                {numberInputField({
-                    label: "平均顾客就餐时间",
-                    initial: parameters.customerEatSecondsAvg / 60,
-                    onChange: v => setParameters({
-                        ...parameters,
-                        customerEatSecondsAvg: v * 60
-                    }),
-                    min: 0.01,
-                    step: 0.01,
-                    unit: "分钟"
-                })}
-                {numberInputField({
-                    label: "顾客就餐时间标准差",
-                    initial: parameters.customerEatSecondsStdVar / 60,
-                    onChange: v => setParameters({
-                        ...parameters,
-                        customerEatSecondsStdVar: v * 60
-                    }),
-                    min: 0.01,
-                    step: 0.01,
-                    unit: "分钟"
-                })}
-                {numberInputField({
-                    label: "平均餐品准备时间",
-                    initial: parameters.dishPrepSecondsAvg / 60,
-                    onChange: v => setParameters({
-                        ...parameters,
-                        dishPrepSecondsAvg: v * 60
-                    }),
-                    min: 0.01,
-                    step: 0.01,
-                    unit: "分钟"
-                })}
-                {numberInputField({
-                    label: "餐品准备时间标准差",
-                    initial: parameters.dishPrepSecondsStdVar / 60,
-                    onChange: v => setParameters({
-                        ...parameters,
-                        dishPrepSecondsStdVar: v * 60
-                    }),
-                    min: 0.01,
-                    step: 0.01,
-                    unit: "分钟"
-                })}
-                {numberInputField({
-                    label: "窗口数量",
-                    initial: parameters.windows.length,
-                    onChange: v => changeWindowCount(v),
-                    min: 3,
-                    step: 1,
-                    unit: "个"
-                })}
-                {numberInputField({
-                    label: "座位数量",
-                    initial: parameters.seatCount,
-                    onChange: v => setParameters({
-                        ...parameters,
-                        seatCount: v
-                    }),
-                    min: 1,
-                    step: 1,
-                    unit: "个"
-                })}
-                <label>平均就餐时间<input type="number" value={parameters.customerEatSecondsAvg / 60} onChange={(e) => setParameters((old) => ({ ...old, customerEatSecondsAvg: Number(e.target.value) * 60 }))} /><span className="unit">分钟</span></label>
-                <label>就餐时间标准差<input type="number" value={parameters.customerEatSecondsStdVar / 60} onChange={(e) => setParameters((old) => ({ ...old, customerEatSecondsStdVar: Number(e.target.value) * 60 }))} /><span className="unit">分钟</span></label>
-                <label>平均做餐时间<input type="number" value={parameters.dishPrepSecondsAvg / 60} onChange={(e) => setParameters((old) => ({ ...old, dishPrepSecondsAvg: Number(e.target.value) * 60 }))} /><span className="unit">分钟</span></label>
-                <label>做餐时间标准差<input type="number" value={parameters.dishPrepSecondsStdVar / 60} onChange={(e) => setParameters((old) => ({ ...old, dishPrepSecondsStdVar: Number(e.target.value) * 60 }))} /><span className="unit">分钟</span></label>
-                <label>窗口数量<input type="number" value={parameters.windows.length} onChange={(e) => changeWindowCount(Number(e.target.value))} /><span className="unit">个</span></label>
-                <label>座位数量<input type="number" value={parameters.seatCount} onChange={(e) => setParameters((old) => ({ ...old, seatCount: Number(e.target.value) }))} /><span className="unit">个</span></label>
-            </div >
+            <section className="panel-card full">
+                <div className="form-grid">
+                    <NumberInputField
+                        label="仿真总时长"
+                        initial={parameters.simulationTotalMinutes}
+                        onChange={v => setParameters({
+                            ...parameters,
+                            simulationTotalMinutes: v
+                        })}
+                        min={1}
+                        step={0.1}
+                        unit='分钟' />
+                    <NumberInputField
+                        label="顾客到达率"
+                        initial={parameters.customerArriveRate * 60}
+                        onChange={v => setParameters({
+                            ...parameters,
+                            customerArriveRate: v / 60
+                        })}
+                        min={1}
+                        step={0.1}
+                        unit='人/分钟' />
+                    <NumberInputField
+                        label="平均顾客就餐时间"
+                        initial={parameters.customerEatSecondsAvg / 60}
+                        onChange={v => setParameters({
+                            ...parameters,
+                            customerEatSecondsAvg: v * 60
+                        })}
+                        min={0.01}
+                        step={0.01}
+                        unit="分钟" />
+                    <NumberInputField
+                        label="顾客就餐时间标准差"
+                        initial={parameters.customerEatSecondsStdVar / 60}
+                        onChange={v => setParameters({
+                            ...parameters,
+                            customerEatSecondsStdVar: v * 60
+                        })}
+                        min={0.01}
+                        step={0.01}
+                        unit="分钟" />
+                    <NumberInputField
+                        label="平均餐品准备时间"
+                        initial={parameters.dishPrepSecondsAvg / 60}
+                        onChange={v => setParameters({
+                            ...parameters,
+                            dishPrepSecondsAvg: v * 60
+                        })}
+                        min={0.01}
+                        step={0.01}
+                        unit="分钟" />
+                    <NumberInputField
+                        label="餐品准备时间标准差"
+                        initial={parameters.dishPrepSecondsStdVar / 60}
+                        onChange={v => setParameters({
+                            ...parameters,
+                            dishPrepSecondsStdVar: v * 60
+                        })}
+                        min={0.01}
+                        step={0.01}
+                        unit="分钟" />
+                    <NumberInputField
+                        label="窗口数量"
+                        initial={parameters.windows.length}
+                        onChange={changeWindowCount}
+                        min={3}
+                        step={1}
+                        unit="个" />
+                    <NumberInputField
+                        label="座位数量"
+                        initial={parameters.seatCount}
+                        onChange={v => setParameters({
+                            ...parameters,
+                            seatCount: v
+                        })}
+                        min={1}
+                        step={1}
+                        unit="个" />
+                </div>
+            </section >
             <section className="panel-card full">
                 <div className="panel-head">
                     <div>
-                        <h2>餐品与顾客比例</h2>
+                        <h2>餐品与顾客权重</h2>
                     </div>
                     <button className="primary-button" type="button" onClick={saveParameters} disabled={loading}>新建数据</button>
                 </div>
                 <div className="form-grid three">
-                    {(['A', 'B', 'C'] as const).map((dish) => (
-                        <label key={dish}>{dish} 套餐比例<input type="number" value={parameters.customerDishRatio[dish]} onChange={(e) => setParameters((old) => ({ ...old, customerDishRatio: { ...old.customerDishRatio, [dish]: Number(e.target.value) } }))} /><span className="unit">%</span></label>
-                    ))}
-                    {(['1', '2', '3', '4'] as const).map((size) => (
-                        <label key={size}>{size} 人组比例<input type="number" value={parameters.customerGroupSizeRatio[size]} onChange={(e) => setParameters((old) => ({ ...old, customerGroupSizeRatio: { ...old.customerGroupSizeRatio, [size]: Number(e.target.value) } }))} /><span className="unit">%</span></label>
-                    ))}
+                    {
+                        (['A', 'B', 'C'] as const).map(dish =>
+                            <NumberInputField
+                                label={`${dish}套餐权重`}
+                                initial={parameters.customerDishRatio[dish]}
+                                onChange={v => setParameters({
+                                    ...parameters,
+                                    customerDishRatio: {
+                                        ...parameters.customerDishRatio,
+                                        [dish]: v
+                                    }
+                                })}
+                                min={1}
+                                step={1} />
+                        )
+                    }
+                    {
+                        (['1', '2', '3', '4'] as const).map(cnt =>
+                            <NumberInputField
+                                label={`${cnt}人组权重`}
+                                initial={parameters.customerGroupSizeRatio[cnt]}
+                                onChange={v => setParameters({
+                                    ...parameters,
+                                    customerGroupSizeRatio: {
+                                        ...parameters.customerGroupSizeRatio,
+                                        [cnt]: v
+                                    }
+                                })}
+                                min={1}
+                                step={1} />
+                        )
+                    }
                 </div>
             </section>
         </>
@@ -936,12 +948,8 @@ function App() {
                         <span className="chip">状态：{localizedState(dashboard.simulationState)}</span>
                     </div>
                 </header>
-
-                <div className="notice-card">{notice}</div>
                 {content}
             </main>
         </div>
     )
 }
-
-export default App
