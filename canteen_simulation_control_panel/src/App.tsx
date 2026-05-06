@@ -35,13 +35,11 @@ type HistoryResponse = {
 
 type SimulationDataDto = {
     id: number
-    name?: string
-    source?: string
-    selected?: boolean
+    name: string
 }
 
 type SimulationDataQueryResponse = {
-    simulationDataList: Record<string, SimulationDataDto>
+    simulationDataList: Record<number, SimulationDataDto>
     selected: number | null
 }
 
@@ -365,13 +363,12 @@ export default function App() {
     const dashboardRef = useRef<DashboardResponse>(emptyDashboard)
     const historyLoadingRef = useRef(false)
 
-    const selectedDataId = dataList.selected ?? null
-    const hasSelectedSimulationData = selectedDataId !== null && selectedDataId !== undefined
+    const hasSelectedSimulationData = dataList.selected != null
     const currentHistory = dashboard.currentHistory ?? emptyHistoryPoint
 
     useEffect(() => {
-        selectedDataRef.current = selectedDataId
-    }, [selectedDataId])
+        selectedDataRef.current = dataList.selected
+    }, [dataList.selected])
 
     useEffect(() => {
         dashboardRef.current = dashboard
@@ -554,7 +551,7 @@ export default function App() {
                 return
             }
 
-            showToast('参数已提交后端，并生成新的仿真数据。')
+            showToast('已生成新的仿真数据。')
             await refreshAll()
         } catch {
             showToast('保存参数失败。')
@@ -564,6 +561,8 @@ export default function App() {
     }
 
     const selectSimulationData = async (id: number) => {
+        const simData = dataList.simulationDataList[id];
+        if (!simData) return;
         setLoading(true)
         try {
             let response = await fetchWithTimeout(`${API_BASE}/data/select?id=${id}`, { method: 'POST' }, 8000)
@@ -577,7 +576,7 @@ export default function App() {
                 return
             }
 
-            showToast(`已选择仿真数据：${id}`)
+            showToast(`已选择仿真数据：${simData.name}`)
             setHistory([])
             await refreshAll()
         } catch {
@@ -588,7 +587,10 @@ export default function App() {
     }
 
     const deleteSimulationData = async (id: number) => {
-        if (!window.confirm(`确定要删除 Simulation #${id} 吗？`)) return
+        const simData = dataList.simulationDataList[id];
+        if (!simData) return
+
+        if (!window.confirm(`确定要删除 ${simData.name} 吗？`)) return
 
         setLoading(true)
         try {
@@ -599,7 +601,7 @@ export default function App() {
                 return
             }
 
-            showToast(`已删除仿真数据：${id}`)
+            showToast(`已删除仿真数据：${simData.name}`)
             setHistory([])
             await refreshAll()
         } catch {
@@ -761,15 +763,14 @@ export default function App() {
                     <div className="table-wrap">
                         <table>
                             <thead>
-                                <tr><th>数据名称</th><th>来源</th><th>状态</th><th>操作</th></tr>
+                                <tr><th>数据名称</th><th>状态</th><th>操作</th></tr>
                             </thead>
                             <tbody>
                                 {dataItems.length > 0 ? dataItems.map((item) => {
                                     const selected = dataList.selected === item.id
                                     return (
                                         <tr key={item.id}>
-                                            <td>{item.name || `Simulation #${item.id}`}</td>
-                                            <td>{item.source || '数据库'}</td>
+                                            <td>{item.name}</td>
                                             <td>{selected ? '当前选中' : '未选中'}</td>
                                             <td>
                                                 <div className="action-buttons">
