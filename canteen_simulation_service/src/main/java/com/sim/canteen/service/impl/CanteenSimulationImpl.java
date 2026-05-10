@@ -426,9 +426,12 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 currentWaitSeatSecsTotal += data.time - customer.startWaitingForSeatTime;
             }
         }
-        double averageCustomerWaitSeatSeconds = (
-                data.leftCustomerWaitSeatSecAvg * data.leftCustomerWaitSeatSampleCnt
-                        + currentWaitSeatSecsTotal) / (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers);
+        double averageCustomerWaitSeatSeconds = 0;
+        if (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers != 0) {
+            averageCustomerWaitSeatSeconds =  (
+                    data.leftCustomerWaitSeatSecAvg * data.leftCustomerWaitSeatSampleCnt
+                            + currentWaitSeatSecsTotal) / (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers);
+        }
         double congestionRate = (double) waitingSeatsCustomers / (data.seats.size() * 4);
 
 
