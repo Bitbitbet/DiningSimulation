@@ -128,7 +128,7 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         }
         data.lock.readLock().lock();
 
-        var size = selectedSimulationData.historyPoints.size();
+        var size = data.historyPoints.size();
         if (begin >= size) {
             data.lock.readLock().unlock();
             return new HistoryResponse(
