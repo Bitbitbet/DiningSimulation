@@ -2,7 +2,6 @@ package com.sim.canteen.service.impl;
 
 import com.sim.canteen.dto.response.DashboardResponse;
 import com.sim.canteen.dto.response.HistoryPointDto;
-import com.sim.canteen.dto.response.HistoryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.enums.CustomerState;
@@ -23,7 +22,7 @@ import java.util.stream.Collectors;
 @Service
 public class CanteenSimulationImpl implements CanteenSimulation {
     static final int TICK_PER_SECOND = 10;
-    private final Object pauseLock = new Object();
+    private final Object threadLock = new Object();
 
     private volatile boolean running = false;
     private volatile boolean shutdown = false;
@@ -37,199 +36,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         new Thread(this::simulationThreadRun).start();
     }
 
-    @Override
-    public void pauseSimulation() {
-        running = false;
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
-    }
-
-    @Override
-    public boolean resumeSimulation() {
-        if (data == null) {
-            return false;
-        }
-        if (data.finished) {
-            return false;
-        }
-        if (running) {
-            return true;
-        }
-        running = true;
-        lastUpdate = Instant.now();
-
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
-
-        return true;
-    }
-
-    @Override
-    public synchronized void setSimulationData(SimulationData simulationData) {
-        if (simulationData == null) {
-            running = false;
-        }
-        this.data = simulationData;
-    }
-
-    @Override
-    public synchronized DashboardResponse getDashboardResponse() {
-        var simulationState = running ? SimulationState.started :
-                (shutdown || data == null ? SimulationState.pending : SimulationState.paused);
-
-        if (data == null) {
-            return new DashboardResponse(
-                    simulationState,
-                    new HistoryPointDto(
-                            0.0, 0.0,
-                            0.0, 0.0,
-                            0.0, 0.0, 0.0
-                    ),
-                    false,
-                    List.of(),
-                    List.of()
-            );
-        }
-
-        HistoryPointDto latestHistory;
-        if (data.historyPoints.isEmpty()) {
-            latestHistory = new HistoryPointDto(
-                    0.0, 0.0,
-                    0.0, 0.0,
-                    0.0, 0.0, 0.0
-            );
-        } else {
-            latestHistory = data.historyPoints.getLast();
-        }
-
-        return new DashboardResponse(
-                simulationState,
-                latestHistory,
-                data.finished,
-                data.windows
-                        .stream()
-                        .map(window -> window.queue.size())
-                        .collect(Collectors.toCollection(ArrayList::new)),
-                data.seats
-                        .stream()
-                        .map(seat -> seat.customers.size()).collect(Collectors.toCollection(ArrayList::new))
-        );
-    }
-
-    @Override
-    public synchronized HistoryResponse getRecentHistory(int limit, int begin) {
-        if (data == null) {
-            throw new RuntimeException("Data is null");
-        }
-        var size = data.historyPoints.size();
-        if (begin >= size) {
-            return new HistoryResponse(
-                    List.of(),
-                    size,
-                    0,
-                    false
-            );
-        }
-        begin = Math.max(size - limit, begin);
-        return new HistoryResponse(
-                data.historyPoints.subList(begin, size),
-                begin,
-                size - begin,
-                false
-        );
-    }
-
-    @Override
-    public synchronized HistoryResponse getRangeHistory(int begin, int count) {
-        if(data == null) {
-            throw new RuntimeException("Data is null");
-        }
-        var size = data.historyPoints.size();
-        if (begin >= size) {
-            return new HistoryResponse(
-                    List.of(),
-                    size,
-                    0,
-                    false
-            );
-        }
-        var hasMore = true;
-        if (begin + count >= size) {
-            count = size - begin;
-            hasMore = false;
-        }
-        return new HistoryResponse(
-                data.historyPoints.subList(begin, begin + count),
-                begin,
-                count,
-                hasMore
-        );
-    }
-
-    @Override
-    public void shutdown() {
-        shutdown = true;
-        running = false;
-        synchronized (pauseLock) {
-            pauseLock.notifyAll();
-        }
-    }
-
-    @Override
-    public void setSimulationSpeed(double speed) {
-        this.simulationSpeed = speed;
-    }
-
-    @Override
-    public StatusResponse getStatus() {
-        return new StatusResponse(true);
-    }
-
-    private void simulationThreadRun() {
-        // 工作线程主循环
-        while (true) {
-            try {
-                var TIME = 1_000_000_000 / TICK_PER_SECOND;
-                Thread.sleep(Duration.ofNanos(TIME));
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
-
-            // 检查运行状态
-            synchronized (pauseLock) {
-                while (!running && !shutdown) {
-                    try {
-                        pauseLock.wait();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        return;
-                    }
-                }
-            }
-            // shutdown为true，退出
-            if (shutdown) {
-                return;
-            }
-
-            var timeLeap = ((double) Duration.between(lastUpdate, Instant.now()).toNanos() / 1_000_000_000) * simulationSpeed;
-            data.time += timeLeap;
-            if (data.time >= data.para.simulationTotalMinutes() * 60) {
-                data.time = data.para.simulationTotalMinutes() * 60;
-                data.finished = true;
-            }
-            simulationThreadTick();
-            lastUpdate = Instant.now();
-            if (data.finished) {
-                running = false;
-            }
-        }
-    }
-
-
-    private synchronized void simulationThreadTick() {
+    private static void simulationThreadTick(SimulationData data) {
         var newCustomers = CustomerArrival.next_until(data);
         // 新顾客，加到结尾，窗口排队
         for (var customerGroup : newCustomers) {
@@ -390,11 +197,11 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             }
             if (!recheck) break;
         }
-        var historyPoint = calculateHistoryPoint();
+        var historyPoint = calculateHistoryPoint(data);
         data.historyPoints.add(historyPoint);
     }
 
-    private HistoryPointDto calculateHistoryPoint() {
+    private static HistoryPointDto calculateHistoryPoint(SimulationData data) {
         // 计算平均队列长度
         int queueLength = 0;
         int busyWindows = 0;
@@ -428,7 +235,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         }
         double averageCustomerWaitSeatSeconds = 0;
         if (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers != 0) {
-            averageCustomerWaitSeatSeconds =  (
+            averageCustomerWaitSeatSeconds = (
                     data.leftCustomerWaitSeatSecAvg * data.leftCustomerWaitSeatSampleCnt
                             + currentWaitSeatSecsTotal) / (data.leftCustomerWaitSeatSampleCnt + waitingSeatsCustomers);
         }
@@ -444,5 +251,157 @@ public class CanteenSimulationImpl implements CanteenSimulation {
                 seatIdleRate,
                 congestionRate
         );
+    }
+
+    @Override
+    public void pauseSimulation() {
+        running = false;
+
+        synchronized (threadLock) {
+            threadLock.notifyAll();
+        }
+    }
+
+    @Override
+    public boolean resumeSimulation() {
+        if (data == null) {
+            return false;
+        }
+        if (data.finished) {
+            return false;
+        }
+        if (running) {
+            return true;
+        }
+        running = true;
+        lastUpdate = Instant.now();
+
+
+        synchronized (threadLock) {
+            threadLock.notifyAll();
+        }
+        return true;
+    }
+
+    @Override
+    public void setSimulationData(SimulationData simulationData) {
+        if (simulationData == null) {
+            running = false;
+        }
+        this.data = simulationData;
+
+    }
+
+    @Override
+    public DashboardResponse getDashboardResponse() {
+        if (data == null) {
+            return new DashboardResponse(
+                    SimulationState.paused,
+                    new HistoryPointDto(
+                            0.0, 0.0,
+                            0.0, 0.0,
+                            0.0, 0.0, 0.0
+                    ),
+                    false,
+                    List.of(),
+                    List.of()
+            );
+        }
+        var data = this.data;
+        data.lock.readLock().lock();
+
+        HistoryPointDto latestHistory;
+        if (data.historyPoints.isEmpty()) {
+            latestHistory = new HistoryPointDto(
+                    0.0, 0.0,
+                    0.0, 0.0,
+                    0.0, 0.0, 0.0
+            );
+        } else {
+            latestHistory = data.historyPoints.getLast();
+        }
+
+        var result = new DashboardResponse(
+                running ? SimulationState.started : SimulationState.paused,
+                latestHistory,
+                data.finished,
+                data.windows
+                        .stream()
+                        .map(window -> window.queue.size())
+                        .collect(Collectors.toCollection(ArrayList::new)),
+                data.seats
+                        .stream()
+                        .map(seat -> seat.customers.size()).collect(Collectors.toCollection(ArrayList::new))
+        );
+
+        data.lock.readLock().unlock();
+
+        return result;
+    }
+
+    @Override
+    public void shutdown() {
+        shutdown = true;
+        running = false;
+
+        synchronized (threadLock) {
+            threadLock.notifyAll();
+        }
+    }
+
+    @Override
+    public void setSimulationSpeed(double speed) {
+        this.simulationSpeed = speed;
+    }
+
+    @Override
+    public StatusResponse getStatus() {
+        return new StatusResponse(true);
+    }
+
+    private void simulationThreadRun() {
+        // 工作线程主循环
+        while (true) {
+            try {
+                var TIME = 1_000_000_000 / TICK_PER_SECOND;
+                Thread.sleep(Duration.ofNanos(TIME));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+
+            // 检查运行状态
+            synchronized (threadLock) {
+                while (!running && !shutdown) {
+                    try {
+                        threadLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
+            // shutdown为true，退出
+            if (shutdown) {
+                return;
+            }
+            if (data == null) {
+                continue;
+            }
+            var data = this.data;
+            data.lock.writeLock().lock();
+            var timeLeap = ((double) Duration.between(lastUpdate, Instant.now()).toNanos() / 1_000_000_000) * simulationSpeed;
+            data.time += timeLeap;
+            if (data.time >= data.para.simulationTotalMinutes() * 60) {
+                data.time = data.para.simulationTotalMinutes() * 60;
+                data.finished = true;
+            }
+            simulationThreadTick(data);
+            lastUpdate = Instant.now();
+            if (data.finished) {
+                running = false;
+            }
+            data.lock.writeLock().unlock();
+        }
     }
 }

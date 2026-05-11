@@ -36,23 +36,34 @@ public class CanteenController {
         return canteenSimulation.getDashboardResponse();
     }
 
-    @GetMapping("/history/recent")
-    public ResponseEntity<HistoryResponse> getRecentHistory(@RequestParam int limit,
+    @GetMapping("/history/recent/{id}")
+    public ResponseEntity<HistoryResponse> getRecentHistory(@PathVariable int id,
+                                                            @RequestParam int limit,
                                                             @RequestParam int begin) {
-        if(begin < 0 || limit <= 0) {
+        if (begin < 0 || limit <= 0) {
             return ResponseEntity.badRequest().build();
         }
-        if(limit > 1000) limit = 1000;
-        return ResponseEntity.ok(canteenSimulation.getRecentHistory(limit, begin));
+        if (limit > 1000) limit = 1000;
+        var body = simulationDataManager.getRecentHistory(id, limit, begin);
+        if (body == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(body);
     }
 
-    @GetMapping("/history/range")
-    public ResponseEntity<HistoryResponse> getRangeHistory(@RequestParam int begin, @RequestParam int count) {
-        if(begin < 0 || count <= 0) {
+    @GetMapping("/history/range/{id}")
+    public ResponseEntity<HistoryResponse> getRangeHistory(@PathVariable int id,
+                                                           @RequestParam int begin,
+                                                           @RequestParam int count) {
+        if (begin < 0 || count <= 0) {
             return ResponseEntity.badRequest().build();
         }
-        if(count > 1000) count = 1000;
-        return ResponseEntity.ok(canteenSimulation.getRangeHistory(begin, count));
+        if (count > 1000) count = 1000;
+        var body = simulationDataManager.getRangeHistory(id, begin, count);
+        if (body == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(body);
     }
 
     @PostMapping("/simulation/pause")
@@ -62,15 +73,16 @@ public class CanteenController {
 
     @PostMapping("/simulation/resume")
     public ResponseEntity<?> resumeSimulation() {
-        if(canteenSimulation.resumeSimulation()) {
+        if (canteenSimulation.resumeSimulation()) {
             return ResponseEntity.ok().build();
         } else {
             return ResponseEntity.badRequest().build();
         }
     }
+
     @PostMapping("/simulation/speed")
     public ResponseEntity<?> setSimulationSpeed(@RequestParam double speed) {
-        if(speed <= 0) {
+        if (speed <= 0) {
             return ResponseEntity.badRequest().build();
         }
         canteenSimulation.setSimulationSpeed(speed);
@@ -81,7 +93,7 @@ public class CanteenController {
     public ResponseEntity<SimulationDataQueryResponse> newSimulationData(
             @RequestBody SimulationParametersDto parameters,
             @RequestParam(value = "name", required = false) Optional<String> name) {
-        if(!simulationDataManager.newSimulationData(parameters, name)) {
+        if (!simulationDataManager.newSimulationData(parameters, name)) {
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(simulationDataManager.querySimulationDataList());
@@ -94,7 +106,7 @@ public class CanteenController {
 
     @PostMapping("/data/select/{id}")
     public ResponseEntity<SimulationDataQueryResponse> selectSimulationData(@PathVariable int id) {
-        if(!simulationDataManager.selectSimulationData(id)) {
+        if (!simulationDataManager.selectSimulationData(id)) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(simulationDataManager.querySimulationDataList());
@@ -102,7 +114,7 @@ public class CanteenController {
 
     @PostMapping("/data/delete/{id}")
     public ResponseEntity<SimulationDataQueryResponse> deleteSimulationData(@PathVariable int id) {
-        if(!simulationDataManager.deleteSimulationData(id)) {
+        if (!simulationDataManager.deleteSimulationData(id)) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(simulationDataManager.querySimulationDataList());

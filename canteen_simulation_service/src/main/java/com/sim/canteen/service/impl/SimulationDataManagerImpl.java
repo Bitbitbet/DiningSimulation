@@ -1,6 +1,7 @@
 package com.sim.canteen.service.impl;
 
 import com.sim.canteen.dto.request.SimulationParametersDto;
+import com.sim.canteen.dto.response.HistoryResponse;
 import com.sim.canteen.dto.response.SimulationDataDto;
 import com.sim.canteen.dto.response.SimulationDataQueryResponse;
 import com.sim.canteen.enums.DishType;
@@ -10,6 +11,7 @@ import com.sim.canteen.simulation.SimulationData;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -28,7 +30,7 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
     }
 
     @Override
-    public boolean newSimulationData(SimulationParametersDto parameters, Optional<String> name) {
+    public synchronized boolean newSimulationData(SimulationParametersDto parameters, Optional<String> name) {
         if(!validateSimulationParameters(parameters)) {
             return false;
         }
@@ -119,7 +121,71 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
     }
 
     @Override
-    public boolean deleteSimulationData(int id) {
+    public HistoryResponse getRecentHistory(int id, int limit, int begin) {
+        var data = datas.get(id);
+        if (data == null) {
+            return null;
+        }
+        data.lock.readLock().lock();
+
+        var size = selectedSimulationData.historyPoints.size();
+        if (begin >= size) {
+            data.lock.readLock().unlock();
+            return new HistoryResponse(
+                    List.of(),
+                    size,
+                    0,
+                    false
+            );
+        }
+        begin = Math.max(size - limit, begin);
+        var rst = new HistoryResponse(
+                data.historyPoints.subList(begin, size),
+                begin,
+                size - begin,
+                false
+        );
+
+        data.lock.readLock().unlock();
+        return rst;
+    }
+
+    @Override
+    public HistoryResponse getRangeHistory(int id, int begin, int count) {
+        var data = datas.get(id);
+        if (data == null) {
+            return null;
+        }
+        data.lock.readLock().lock();
+
+        var size = data.historyPoints.size();
+        if (begin >= size) {
+            data.lock.readLock().unlock();
+            return new HistoryResponse(
+                    List.of(),
+                    size,
+                    0,
+                    false
+            );
+        }
+        var hasMore = true;
+        if (begin + count >= size) {
+            count = size - begin;
+            hasMore = false;
+        }
+        var rst = new HistoryResponse(
+                List.copyOf(data.historyPoints.subList(begin, begin + count)),
+                begin,
+                count,
+                hasMore
+        );
+
+        data.lock.readLock().unlock();
+        return rst;
+    }
+
+    @Override
+    public synchronized boolean deleteSimulationData(int id) {
         if(!datas.containsKey(id))
             return false;
         if(selectedSimulationData == datas.get(id)) {
@@ -131,7 +197,7 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
     }
 
     @Override
-    public SimulationDataQueryResponse querySimulationDataList() {
+    public synchronized SimulationDataQueryResponse querySimulationDataList() {
         HashMap<Integer, SimulationDataDto> dataList = new HashMap<>();
         Integer selected = null;
         for(var entry : datas.entrySet()) {
@@ -147,7 +213,7 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
     }
 
     @Override
-    public boolean selectSimulationData(int id) {
+    public synchronized boolean selectSimulationData(int id) {
         if(!datas.containsKey(id))
             return false;
         var data = datas.get(id);

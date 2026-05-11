@@ -10,12 +10,14 @@ import com.sim.canteen.entity.WindowEntity;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class SimulationData {
     public final int id;
     public final String name;
     public final SimulationParametersDto para;
     public boolean finished = false;
+    public final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
     public double time = 0;
 

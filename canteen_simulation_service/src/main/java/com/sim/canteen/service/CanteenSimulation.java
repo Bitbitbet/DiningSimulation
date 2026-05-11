@@ -16,20 +16,11 @@ public interface CanteenSimulation {
 
     /**
      * 设置仿真运行倍速
-     * @param speed 通常在0~2之间，必须大于零
+     * @param speed 实际时间的多少倍速，必须大于零
      */
     public void setSimulationSpeed(double speed);
 
     public void setSimulationData(SimulationData simulationData);
-
-    /**
-     * 获取最近的历史信息
-     * @param limit 限制至多的项数，只能为1到1000
-     * @param begin 限制只在该下标之后的历史项，大于等于0
-     */
-    public HistoryResponse getRecentHistory(int limit, int begin);
-
-    public HistoryResponse getRangeHistory(int begin, int count);
 
     StatusResponse getStatus();
 

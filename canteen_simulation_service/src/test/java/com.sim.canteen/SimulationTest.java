@@ -40,7 +40,7 @@ public class SimulationTest {
     public void directlyRunDashboardResponseTest() {
         assertThat(canteenSimulationImpl.getDashboardResponse())
                 .isEqualTo(new DashboardResponse(
-                        SimulationState.pending,
+                        SimulationState.paused,
                         new HistoryPointDto(
                                 0.0, 0.0,
                                 0.0, 0.0,
@@ -84,14 +84,5 @@ public class SimulationTest {
                         expected,
                         0
                 ));
-    }
-
-    @Test
-    public void canteenSimulation_getRecentHistory_shouldThrow_whenNoData() {
-        assertThatThrownBy(() -> canteenSimulationImpl.getRecentHistory(1000, 0)).isInstanceOf(RuntimeException.class);
-    }
-    @Test
-    public void canteenSimulation_getRangedHistory_shouldThrow_whenNoData() {
-        assertThatThrownBy(() -> canteenSimulationImpl.getRangeHistory(1000, 0)).isInstanceOf(RuntimeException.class);
     }
 }
