@@ -1,10 +1,15 @@
+import { useState } from "react"
 import { formatTime, type DashboardResponse, type HistoryPoint } from "./App"
 
 function percent(value: number) {
     return `${(value * 100).toFixed(1)}%`
 }
 
-function renderHistoryOverview(history: HistoryPoint[]) {
+function renderHistoryOverview(
+    history: HistoryPoint[],
+    visibleHistoryLabels: string[],
+    toggleHistoryLabel: (label: string) => void
+) {
     if (history.length === 0) {
         return <div className="empty-chart">暂无历史数据，请先新建、选择仿真数据并运行一段时间。</div>
     }
@@ -52,32 +57,55 @@ function renderHistoryOverview(history: HistoryPoint[]) {
         },
     ]
 
+    const visibleSeries = series.filter((item) => visibleHistoryLabels.includes(item.label))
+
     return (
         <div className="history-overview-card">
             <h3>仿真历史总览</h3>
-            <svg viewBox={`0 0 ${width} ${height}`} className="overview-chart" role="img" aria-label="仿真历史总览折线图">
-                {[0, 1, 2, 3].map((line) => {
-                    const y = 24 + (line / 3) * (height - 48)
-                    return <line key={line} x1="36" y1={y} x2={width - 36} y2={y} className="grid-line" />
-                })}
+
+            <div className="history-filter">
                 {series.map((item) => (
-                    <polyline
-                        key={item.label}
-                        points={createPolyline(history, item.getter, width, height)}
-                        fill="none"
-                        stroke={item.color}
-                        strokeWidth="3.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
+                    <label key={item.label} className="history-filter-item">
+                        <input
+                            type="checkbox"
+                            checked={visibleHistoryLabels.includes(item.label)}
+                            onChange={() => toggleHistoryLabel(item.label)}
+                        />
+                        <span className="history-filter-dot" style={{ background: item.color }} />
+                        {item.label}
+                    </label>
                 ))}
-            </svg>
+            </div>
+
+            {visibleSeries.length === 0 ? (
+                <div className="empty-chart">请至少选择一个历史指标。</div>
+            ) : (
+                <svg viewBox={`0 0 ${width} ${height}`} className="overview-chart" role="img" aria-label="仿真历史总览折线图">
+                    {[0, 1, 2, 3].map((line) => {
+                        const y = 24 + (line / 3) * (height - 48)
+                        return <line key={line} x1="36" y1={y} x2={width - 36} y2={y} className="grid-line" />
+                    })}
+                    {visibleSeries.map((item) => (
+                        <polyline
+                            key={item.label}
+                            points={createPolyline(history, item.getter, width, height)}
+                            fill="none"
+                            stroke={item.color}
+                            strokeWidth="3.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    ))}
+                </svg>
+            )}
+
             <div className="chart-time-row">
                 <span>{formatTime(history[0]?.time ?? 0)}</span>
                 <span>{formatTime(latest.time)}</span>
             </div>
+
             <div className="legend-grid">
-                {series.map((item) => (
+                {visibleSeries.map((item) => (
                     <span key={item.label} className="legend-chip">
                         <i style={{ background: item.color }} />
                         {item.label}：{item.value}
@@ -143,6 +171,24 @@ export default function MonitorPage({
     pauseSimulation: () => void,
     loading: boolean
 }) {
+    const [visibleHistoryLabels, setVisibleHistoryLabels] = useState<string[]>([
+        '平均排队长度',
+        '平均等座时间',
+        '厨师利用率',
+        '座位周转率',
+        '座位空置率',
+        '拥堵程度',
+    ])
+
+    const toggleHistoryLabel = (label: string) => {
+        setVisibleHistoryLabels((prev) => {
+            if (prev.includes(label)) {
+                return prev.filter((item) => item !== label)
+            }
+            return [...prev, label]
+        })
+    }
+
     return <>
         <section className="metrics-grid">
             <div className="metric-card"><span>平均排队长度</span><strong>{dashboard.currentHistory.averageQueueLength.toFixed(2)} 人</strong></div>
@@ -163,7 +209,7 @@ export default function MonitorPage({
                         {historyLoading ? '刷新中' : '刷新历史'}
                     </button>
                 </div>
-                {history != null && renderHistoryOverview(history)}
+                {history != null && renderHistoryOverview(history, visibleHistoryLabels, toggleHistoryLabel)}
             </div>
 
             <div className="panel-card">
