@@ -7,6 +7,9 @@ import com.sim.canteen.dto.response.SimulationDataQueryResponse;
 import com.sim.canteen.dto.response.StatusResponse;
 import com.sim.canteen.service.CanteenSimulation;
 import com.sim.canteen.service.SimulationDataManager;
+import com.sim.canteen.service.SimulationDbService;
+import com.sim.canteen.simulation.SimulationData;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +20,8 @@ import java.util.Optional;
 public class CanteenController {
     private final CanteenSimulation canteenSimulation;
     private final SimulationDataManager simulationDataManager;
+    @Autowired
+    private SimulationDbService simulationDbService;
 
     public CanteenController(
             CanteenSimulation canteenSimulation,
@@ -106,9 +111,12 @@ public class CanteenController {
 
     @PostMapping("/data/select/{id}")
     public ResponseEntity<SimulationDataQueryResponse> selectSimulationData(@PathVariable int id) {
-        if (!simulationDataManager.selectSimulationData(id)) {
-            return ResponseEntity.notFound().build();
-        }
+
+
+        // 1. 先尝试从内存选择（你原来的逻辑）
+        boolean success = simulationDataManager.selectSimulationData(id);
+
+
         return ResponseEntity.ok(simulationDataManager.querySimulationDataList());
     }
 

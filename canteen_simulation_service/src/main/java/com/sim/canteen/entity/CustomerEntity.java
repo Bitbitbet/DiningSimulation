@@ -14,8 +14,9 @@ package com.sim.canteen.entity;
 import com.sim.canteen.dto.response.CustomerDto;
 import com.sim.canteen.enums.CustomerState;
 import com.sim.canteen.enums.DishType;
+import lombok.Data;
 
-
+@Data
 public class CustomerEntity {
     public final int id;
     public final int groupId;
@@ -67,6 +68,19 @@ public class CustomerEntity {
         this.orderType = orderType;
 
         this.state = CustomerState.Queuing;
+    }
+
+    // ========================
+    // 【关键修复：加无参构造】
+    // ========================
+    public CustomerEntity() {
+        this.id = 0;
+        this.groupId = 0;
+        this.groupSize = 0;
+        this.simulatedDishPrepSeconds = 0;
+        this.simulatedEatTimeSeconds = 0;
+        this.arriveTime = 0;
+        this.orderType = null;
     }
 
     public CustomerDto dto() {

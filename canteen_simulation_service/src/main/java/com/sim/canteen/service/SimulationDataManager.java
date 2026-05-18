@@ -3,6 +3,7 @@ package com.sim.canteen.service;
 import com.sim.canteen.dto.request.SimulationParametersDto;
 import com.sim.canteen.dto.response.HistoryResponse;
 import com.sim.canteen.dto.response.SimulationDataQueryResponse;
+import com.sim.canteen.simulation.SimulationData;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -25,4 +26,6 @@ public interface SimulationDataManager {
     public HistoryResponse getRecentHistory(int id, int limit, int begin);
 
     public HistoryResponse getRangeHistory(int id, int begin, int count);
+
+    public void addLoadedSimulationData(SimulationData data);
 }

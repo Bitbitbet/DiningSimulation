@@ -3,6 +3,7 @@ package com.sim.canteen.entity;
 import com.sim.canteen.dto.response.WindowDto;
 import com.sim.canteen.enums.DishType;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class WindowEntity {
@@ -28,4 +29,11 @@ public class WindowEntity {
                 queue
         );
     }
+    public WindowEntity() {
+        this.dishType = null;
+        this.windowPrepTimeModifier = 0;
+        this.queue = new ArrayList<>(); // ❗ 绝对不能是 null
+        this.freeSince = 0;
+    }
+
 }

@@ -15,5 +15,27 @@ public record HistoryPointDto(
         double seatIdleRate,
         // 堵塞率，等待座位的人数/座位总数(乘上每个座位的人数的座位总数)，时间点计算
         double congestionRate
-        ) {
+) {
+
+    // ===================== 【新增：清理 NaN 方法】 =====================
+    public HistoryPointDto cleanNaN() {
+        return new HistoryPointDto(
+                this.time,
+                fix(this.averageQueueLength),
+                fix(this.averageCustomerWaitSeatSeconds),
+                fix(this.chefUtilization),
+                fix(this.seatTurnover),
+                fix(this.seatIdleRate),
+                fix(this.congestionRate)
+        );
+    }
+
+    // 把 NaN / 无穷大 变成 0.0
+    private double fix(double val) {
+        if (Double.isNaN(val) || Double.isInfinite(val)) {
+            return 0.0;
+        }
+        return val;
+    }
+    // ==================================================================
 }

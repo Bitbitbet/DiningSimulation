@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sim.canteen.mapper.SimWindowMapper">
+    <delete id="deleteBySimulationId">
+        DELETE FROM sim_window WHERE simulation_id=#{simId}
+    </delete>
+    <insert id="batchInsert">
+        INSERT INTO sim_window (simulation_id,dish_type,window_prep_time_modifier,free_since)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{simId},#{item.dishType},#{item.windowPrepTimeModifier},#{item.freeSince})
+        </foreach>
+    </insert>
+    <select id="selectBySimulationId" resultType="com.sim.canteen.entity.WindowEntity">
+        SELECT dish_type AS dishType, window_prep_time_modifier AS windowPrepTimeModifier, free_since AS freeSince
+        FROM sim_window WHERE simulation_id=#{simId}
+    </select>
+</mapper>

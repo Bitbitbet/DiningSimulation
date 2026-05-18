@@ -16,11 +16,7 @@ public class SimulationData {
     public final int id;
     public final String name;
     public final SimulationParametersDto para;
-    public boolean finished = false;
     public final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
-
-    public double time = 0;
-
     // 仿真历史
     public final List<HistoryPointDto> historyPoints = new ArrayList<>();
     // 窗口实体
@@ -31,18 +27,16 @@ public class SimulationData {
     public final List<SeatEntity> seats = new ArrayList<>();
     // 顾客组索引
     public final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
-
+    // 计算到达学生组率
+    public final double customerGroupArriveRate;
+    public boolean finished = false;
+    public double time = 0;
     // 已经开始吃饭或离开的顾客等待座位时间
     public double leftCustomerWaitSeatSecAvg = 0.0;
     // 已经开始吃饭或离开的顾客等待座位时间这一项统计的人数
     public int leftCustomerWaitSeatSampleCnt = 0;
-
     // 吃饱离开的顾客总数
     public int leftCustomers = 0;
-
-    // 计算到达学生组率
-    public final double customerGroupArriveRate;
-
     public List<Double> customerArriveTimes = new ArrayList<>();
     public int customerIdGenerator = 0;
     public int customerGroupIdGenerator = 0;

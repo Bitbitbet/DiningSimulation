@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sim.canteen.mapper.SimulationDataMapper">
+
+    <insert id="insert">
+        INSERT INTO simulation_data (id, name, finished, time, left_customer_wait_seat_sec_avg, left_customer_wait_seat_sample_cnt, left_customers, customer_group_arrive_rate, customer_id_generator, customer_group_id_generator, next_customer_grp_time, parameters_json)
+        VALUES (#{id}, #{name}, #{finished}, #{time}, #{leftCustomerWaitSeatSecAvg}, #{leftCustomerWaitSeatSampleCnt}, #{leftCustomers}, #{customerGroupArriveRate}, #{customerIdGenerator}, #{customerGroupIdGenerator}, #{nextCustomerGrpTime}, #{parametersJson})
+    </insert>
+
+    <update id="update">
+        UPDATE simulation_data
+        SET finished = #{finished},
+            time = #{time},
+            left_customer_wait_seat_sec_avg = #{leftCustomerWaitSeatSecAvg},
+            left_customer_wait_seat_sample_cnt = #{leftCustomerWaitSeatSampleCnt},
+            left_customers = #{leftCustomers},
+            customer_id_generator = #{customerIdGenerator},
+            customer_group_id_generator = #{customerGroupIdGenerator},
+            next_customer_grp_time = #{nextCustomerGrpTime}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultType="com.sim.canteen.entity.SimulationDataPO">
+        SELECT * FROM simulation_data WHERE id = #{id}
+    </select>
+    <select id="selectAllIds" resultType="java.lang.Integer">
+        SELECT id FROM simulation_data
+    </select>
+    <select id="selectMaxId" resultType="java.lang.Integer">
+        SELECT MAX(id) FROM simulation_data
+    </select>
+</mapper>
