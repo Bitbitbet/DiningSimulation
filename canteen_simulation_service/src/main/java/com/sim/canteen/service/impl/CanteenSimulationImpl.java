@@ -265,7 +265,6 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         );
     }
 
-<<<<<<< HEAD
     @Override
     public void pauseSimulation() {
         running = false;

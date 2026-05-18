@@ -1,6 +1,5 @@
 package com.sim.canteen.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sim.canteen.dto.response.HistoryPointDto;
 import com.sim.canteen.entity.CustomerEntity;
 import com.sim.canteen.entity.SeatEntity;
@@ -13,6 +12,7 @@ import com.sim.canteen.dto.request.SimulationParametersDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +71,7 @@ public class SimulationDbService {
 
             // ====================== 顾客 ======================
             customerMapper.deleteBySimulationId(data.id);
-            List<CustomerEntity> customers = data.customers.values().stream().collect(Collectors.toList());
+            List<CustomerEntity> customers = new ArrayList<>(data.customers.values());
             if (!customers.isEmpty()) {
                 customerMapper.batchInsert(data.id, customers);
             }
@@ -87,7 +87,6 @@ public class SimulationDbService {
             if (!data.historyPoints.isEmpty()) {
                 // 修复：过滤 NaN
                 List<HistoryPointDto> cleanList = data.historyPoints.stream()
-                        .map(HistoryPointDto::cleanNaN)
                         .toList();
 
                 historyMapper.batchInsert(data.id, cleanList);
