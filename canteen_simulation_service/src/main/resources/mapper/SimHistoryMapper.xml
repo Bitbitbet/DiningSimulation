@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sim.canteen.mapper.SimHistoryMapper">
+
+    <!-- 批量插入历史数据 -->
+    <insert id="batchInsert">
+        INSERT INTO sim_history (
+        simulation_id,
+        time,
+        average_queue_length,
+        average_customer_wait_seat_seconds,
+        chef_utilization,
+        seat_turnover,
+        seat_idle_rate,
+        congestion_rate
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{simId},
+            #{item.time},
+            #{item.averageQueueLength},
+            #{item.averageCustomerWaitSeatSeconds},
+            #{item.chefUtilization},
+            #{item.seatTurnover},
+            #{item.seatIdleRate},
+            #{item.congestionRate})
+        </foreach>
+    </insert>
+
+    <!-- 查询历史 -->
+    <select id="selectBySimulationId" resultType="com.sim.canteen.dto.response.HistoryPointDto">
+        SELECT
+            time,
+            average_queue_length AS averageQueueLength,
+            average_customer_wait_seat_seconds AS averageCustomerWaitSeatSeconds,
+            chef_utilization AS chefUtilization,
+            seat_turnover AS seatTurnover,
+            seat_idle_rate AS seatIdleRate,
+            congestion_rate AS congestionRate
+        FROM sim_history
+        WHERE simulation_id = #{simId}
+        ORDER BY time ASC
+    </select>
+
+</mapper>

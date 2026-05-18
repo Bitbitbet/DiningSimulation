@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sim.canteen.mapper.SimSeatMapper">
+    <delete id="deleteBySimulationId">
+        DELETE FROM sim_seat WHERE simulation_id=#{simId}
+    </delete>
+    <insert id="batchInsert">
+        INSERT INTO sim_seat (simulation_id,id,four_free_since,three_free_since,two_free_since,one_free_since)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{simId},#{item.id},#{item.fourFreeSince},#{item.threeFreeSince},#{item.twoFreeSince},#{item.oneFreeSince})
+        </foreach>
+    </insert>
+    <select id="selectBySimulationId" resultType="com.sim.canteen.entity.SeatEntity">
+        SELECT id,four_free_since AS fourFreeSince,three_free_since AS threeFreeSince,two_free_since AS twoFreeSince,one_free_since AS oneFreeSince
+        FROM sim_seat WHERE simulation_id=#{simId}
+    </select>
+</mapper>

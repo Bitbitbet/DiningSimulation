@@ -1,12 +1,17 @@
 server:
-  port: 23456 # 项目运行端口
+  port: 23456
 
 spring:
   application:
-    name: canteen-simulation  # 应用名称
-
+    name: canteen-simulation
   datasource:
-    url: jdbc:mysql://localhost:3306/canteen_simulation?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: CanteenSimulation
-    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.150.101:3306/canteen?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123
+
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

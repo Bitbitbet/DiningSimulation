@@ -12,23 +12,23 @@ import java.util.HashMap;
 import java.util.List;
 
 public class SimulationData {
-    public final int id;
-    public final String name;
-    public final SimulationParametersDto para;
-    public boolean finished = false;
+        public final int id;
+        public final String name;
+        public final SimulationParametersDto para;
+        public boolean finished = false;
 
-    public double time = 0;
+        public double time = 0;
 
-    // 仿真历史
-    public final List<HistoryPointDto> historyPoints = new ArrayList<>();
-    // 窗口实体
-    public final List<WindowEntity> windows = new ArrayList<>();
-    // 顾客实体
-    public final HashMap<Integer, CustomerEntity> customers = new HashMap<>();
-    // 座位实体
-    public final List<SeatEntity> seats = new ArrayList<>();
-    // 顾客组索引
-    public final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
+        // 仿真历史
+        public final List<HistoryPointDto> historyPoints = new ArrayList<>();
+        // 窗口实体
+        public final List<WindowEntity> windows = new ArrayList<>();
+        // 顾客实体
+        public final HashMap<Integer, CustomerEntity> customers = new HashMap<>();
+        // 座位实体
+        public final List<SeatEntity> seats = new ArrayList<>();
+        // 顾客组索引
+        public final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
 
     // 已经开始吃饭或离开的顾客等待座位时间
     public double leftCustomerWaitSeatSecAvg = 0.0;

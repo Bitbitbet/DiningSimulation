@@ -3,9 +3,10 @@ package com.sim.canteen.entity;
 
 import com.sim.canteen.dto.response.SeatDto;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class SeatEntity {
+public class    SeatEntity {
     public final int id;
     public List<Integer> customers;
     public double fourFreeSince;
@@ -33,5 +34,13 @@ public class SeatEntity {
         return new SeatDto(
                 customers
         );
+    }
+    public SeatEntity() {
+        this.id = 0;
+        this.customers = new ArrayList<>(); // ✅ 必须初始化
+        this.fourFreeSince = 0;
+        this.threeFreeSince = 0;
+        this.twoFreeSince = 0;
+        this.oneFreeSince = 0;
     }
 }
