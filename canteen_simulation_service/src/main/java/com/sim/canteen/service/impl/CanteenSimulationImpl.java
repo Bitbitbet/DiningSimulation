@@ -8,12 +8,16 @@ import com.sim.canteen.entity.SeatEntity;
 import com.sim.canteen.enums.CustomerState;
 import com.sim.canteen.enums.SimulationState;
 import com.sim.canteen.service.CanteenSimulation;
+import com.sim.canteen.service.SimulationDbService;
 import com.sim.canteen.simulation.CustomerArrival;
 import com.sim.canteen.simulation.SimulationData;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -30,7 +34,15 @@ public class CanteenSimulationImpl implements CanteenSimulation {
     private volatile double simulationSpeed = 1;
     private volatile SimulationData data = null;
 
+
     private volatile Instant lastUpdate;
+
+    @Autowired
+    private SimulationDbService simulationDbService;
+    public SimulationData getCurrentSimulation() {
+        return this.data;
+    }
+
 
     public CanteenSimulationImpl() {
         // Start the worker thread
@@ -51,6 +63,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             return false;
         }
         if (data.finished) {
+
             return false;
         }
         if(running) {
@@ -224,6 +237,9 @@ public class CanteenSimulationImpl implements CanteenSimulation {
             lastUpdate = Instant.now();
             if (data.finished) {
                 running = false;
+                simulationDbService.saveHistory(data);  // 保存历史
+                simulationDbService.saveSnapshot(data); // 最后再存一次完整数据
+
             }
         }
     }
@@ -453,4 +469,20 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         );
     }
 
+
+    // 新增一个工具方法：把 NaN / 无穷大 变成 0
+    private double safeDouble(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return 0.0;
+        }
+        return value;
+    }
+
+    @Scheduled(fixedRate = 10000)
+    public void autoSave() {
+        SimulationData current = getCurrentSimulation();
+        if (current != null && !current.finished) {
+            simulationDbService.saveSnapshot(current);
+        }
+    }
 }
