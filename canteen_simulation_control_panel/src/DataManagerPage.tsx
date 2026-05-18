@@ -9,7 +9,6 @@ export default function DataManagerPage({
     downloadDashboard,
     refreshAll,
     setParameters,
-    changeWindowCount,
     loading
 }: {
     sortedDataList: {
@@ -23,7 +22,6 @@ export default function DataManagerPage({
     downloadDashboard: () => void
     refreshAll: () => void
     setParameters: (p: SimulationParameters) => void
-    changeWindowCount: (c: number) => void
     loading: boolean
 }
 ) {
@@ -70,127 +68,140 @@ export default function DataManagerPage({
 
         </section>
         <section className="panel-card full">
-            <div className="form-grid">
+            <div className="panel-head">
+                <h2>仿真数据参数设置</h2>
+            </div>
+
+            <h3 className="section-title">基本参数</h3>
+            <div className="params-grid-3">
                 <NumberInputField
                     label="仿真总时长"
                     initial={parameters.simulationTotalMinutes}
-                    onChange={v => setParameters({
-                        ...parameters,
-                        simulationTotalMinutes: v
-                    })}
-                    min={1}
-                    step={0.1}
-                    unit='分钟' />
+                    onChange={v => setParameters({ ...parameters, simulationTotalMinutes: v })}
+                    min={1} step={0.1} unit="分钟" />
                 <NumberInputField
                     label="顾客到达率"
                     initial={parameters.customerArriveRate * 60}
-                    onChange={v => setParameters({
-                        ...parameters,
-                        customerArriveRate: v / 60
-                    })}
-                    min={1}
-                    step={0.1}
-                    unit='人/分钟' />
-                <div>
-                    <NumberInputField
-                        label="平均顾客就餐时间"
-                        initial={parameters.customerEatSecondsAvg / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            customerEatSecondsAvg: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
-                    <NumberInputField
-                        label="顾客就餐时间标准差"
-                        initial={parameters.customerEatSecondsStdVar / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            customerEatSecondsStdVar: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
-                </div>
-                <div>
-                    <NumberInputField
-                        label="平均餐品准备时间"
-                        initial={parameters.dishPrepSecondsAvg / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            dishPrepSecondsAvg: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
-                    <NumberInputField
-                        label="餐品准备时间标准差"
-                        initial={parameters.dishPrepSecondsStdVar / 60}
-                        onChange={v => setParameters({
-                            ...parameters,
-                            dishPrepSecondsStdVar: v * 60
-                        })}
-                        min={0.01}
-                        step={0.01}
-                        unit="分钟" />
-                </div>
+                    onChange={v => setParameters({ ...parameters, customerArriveRate: v / 60 })}
+                    min={1} step={0.1} unit="人/分钟" />
                 <NumberInputField
-                    label="窗口数量"
-                    initial={parameters.windows.length}
-                    onChange={changeWindowCount}
-                    min={3}
-                    step={1}
-                    unit="个" />
+                    label="平均 顾客就餐时间"
+                    initial={parameters.customerEatSecondsAvg / 60}
+                    onChange={v => setParameters({ ...parameters, customerEatSecondsAvg: v * 60 })}
+                    min={0.01} step={0.01} unit="分钟" />
+                <NumberInputField
+                    label="顾客就餐时间 标准差"
+                    initial={parameters.customerEatSecondsStdVar / 60}
+                    onChange={v => setParameters({ ...parameters, customerEatSecondsStdVar: v * 60 })}
+                    min={0.01} step={0.01} unit="分钟" />
+                <NumberInputField
+                    label="平均 餐品准备时间"
+                    initial={parameters.dishPrepSecondsAvg / 60}
+                    onChange={v => setParameters({ ...parameters, dishPrepSecondsAvg: v * 60 })}
+                    min={0.01} step={0.01} unit="分钟" />
+                <NumberInputField
+                    label="餐品准备时间 标准差"
+                    initial={parameters.dishPrepSecondsStdVar / 60}
+                    onChange={v => setParameters({ ...parameters, dishPrepSecondsStdVar: v * 60 })}
+                    min={0.01} step={0.01} unit="分钟" />
                 <NumberInputField
                     label="座位数量"
                     initial={parameters.seatCount}
-                    onChange={v => setParameters({
-                        ...parameters,
-                        seatCount: v
-                    })}
-                    min={1}
-                    step={1}
-                    unit="个" />
+                    onChange={v => setParameters({ ...parameters, seatCount: v })}
+                    min={1} step={1} unit="个" />
             </div>
-            <div className="panel-head">
-                <div>
-                    <h2>餐品与顾客权重</h2>
+
+            <h3 className="section-title">窗口设置（{parameters.windows.length} 个）</h3>
+            <div className="windows-list">
+                <div className="window-header">
+                    <span>#</span>
+                    <span>餐品类型</span>
+                    <span>效率系数</span>
+                    <span></span>
                 </div>
+                {parameters.windows.map((win, i) => (
+                    <div className="window-row" key={i}>
+                        <span className="window-index">{i + 1}</span>
+                        <select
+                            value={win.dishType}
+                            onChange={e => {
+                                const next = [...parameters.windows]
+                                next[i] = { ...next[i], dishType: e.target.value }
+                                setParameters({ ...parameters, windows: next })
+                            }}
+                        >
+                            <option value="A">A 套餐</option>
+                            <option value="B">B 套餐</option>
+                            <option value="C">C 套餐</option>
+                        </select>
+                        <input
+                            type="number"
+                            value={win.windowPrepTimeModifier}
+                            min={0.1}
+                            step={0.1}
+                            onChange={e => {
+                                if (!e.target.validity.valid) return
+                                const next = [...parameters.windows]
+                                next[i] = { ...next[i], windowPrepTimeModifier: Number(e.target.value) }
+                                setParameters({ ...parameters, windows: next })
+                            }}
+                        />
+                        <button
+                            className="danger-button"
+                            type="button"
+                            disabled={parameters.windows.length <= 1}
+                            onClick={() => {
+                                const next = parameters.windows.filter((_, j) => j !== i)
+                                setParameters({ ...parameters, windows: next })
+                            }}
+                        >
+                            删除
+                        </button>
+                    </div>
+                ))}
             </div>
-            <div className="form-grid three">
-                {
-                    (['A', 'B', 'C'] as const).map(dish =>
+            <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                    const types = ['A', 'B', 'C'] as const
+                    const next = [...parameters.windows, { dishType: types[parameters.windows.length % 3], windowPrepTimeModifier: 1 }]
+                    setParameters({ ...parameters, windows: next })
+                }}
+            >
+                + 添加窗口
+            </button>
+
+            <h3 className="section-title" style={{ marginTop: 28 }}>餐品与顾客权重</h3>
+            <div className="form-grid">
+                <div className="input-field-container">
+                    <h4>餐品权重</h4>
+                    {(['A', 'B', 'C'] as const).map(dish =>
                         <NumberInputField
-                            label={`${dish}套餐权重`}
+                            key={dish}
+                            label={`${dish} 套餐`}
                             initial={parameters.customerDishRatio[dish]}
                             onChange={v => setParameters({
                                 ...parameters,
-                                customerDishRatio: {
-                                    ...parameters.customerDishRatio,
-                                    [dish]: v
-                                }
+                                customerDishRatio: { ...parameters.customerDishRatio, [dish]: v }
                             })}
-                            min={1}
-                            step={1} />
-                    )
-                }
-                {
-                    (['1', '2', '3', '4'] as const).map(cnt =>
+                            min={1} step={1} />
+                    )}
+                </div>
+                <div className="input-field-container">
+                    <h4>顾客组权重</h4>
+                    {(['1', '2', '3', '4'] as const).map(cnt =>
                         <NumberInputField
-                            label={`${cnt}人组权重`}
+                            key={cnt}
+                            label={`${cnt} 人组`}
                             initial={parameters.customerGroupSizeRatio[cnt]}
                             onChange={v => setParameters({
                                 ...parameters,
-                                customerGroupSizeRatio: {
-                                    ...parameters.customerGroupSizeRatio,
-                                    [cnt]: v
-                                }
+                                customerGroupSizeRatio: { ...parameters.customerGroupSizeRatio, [cnt]: v }
                             })}
-                            min={1}
-                            step={1} />
-                    )
-                }
+                            min={1} step={1} />
+                    )}
+                </div>
             </div>
         </section>
     </>;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type RefObject, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { useToast } from './Toast'
 import DataManagerPage from './DataManagerPage'
@@ -113,6 +113,10 @@ const initialParameters: SimulationParameters = {
         { dishType: 'B', windowPrepTimeModifier: 1 },
         { dishType: 'C', windowPrepTimeModifier: 1 },
         { dishType: 'A', windowPrepTimeModifier: 1 },
+        { dishType: 'B', windowPrepTimeModifier: 1 },
+        { dishType: 'C', windowPrepTimeModifier: 1 },
+        { dishType: 'A', windowPrepTimeModifier: 1 },
+        { dishType: 'B', windowPrepTimeModifier: 1 },
     ],
     seatCount: 24,
 }
@@ -129,34 +133,41 @@ export function NumberInputField(
         }) {
 
     const [value, setValue] = useState(initial);
-    return <div className="">
-        <label>
-            {label}
-        </label>
-        <input
-            type="number"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={
-                event => {
-                    const v = Number(event.target.value);
-                    setValue(v);
-                    if ((min == null || v >= min) && (max == null || v <= max)) // TODO
-                        onChange(v);
+    return <label>
+        {label}
+        <div className='input-unit'>
+            <input
+                type="number"
+                name={label}
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={
+                    event => {
+                        console.log();
+                        const v = Number(event.target.value);
+                        setValue(v);
+                        if (event.target.validity.valid &&
+                            (min == null || v >= min) && (max == null || v <= max))
+                            onChange(v);
+                    }
                 }
-            }
-        />
-        {unit ? <span>{unit}</span> : null}
-    </div>;
+            />
+            {unit ? <span>{unit}</span> : null}
+        </div>
+    </label>;
 }
 
-function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs = 5000) {
+function fetchWithTimeout(url: string, options?: RequestInit, timeoutMs = 5000, externalSignal?: AbortSignal) {
     const controller = new AbortController()
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
 
-    return fetch(url, { ...options, signal: controller.signal }).finally(() => {
+    const signal = externalSignal
+        ? AbortSignal.any([controller.signal, externalSignal])
+        : controller.signal
+
+    return fetch(url, { ...options, signal }).finally(() => {
         window.clearTimeout(timeoutId)
     })
 }
@@ -177,12 +188,6 @@ export function formatTime(seconds: number) {
     return `${String(h).padStart(2, '0')} 时 ${String(m).padStart(2, '0')} 分 ${String(s).padStart(2, '0')} 秒`
 }
 
-function clamp(value: number, min: number, max: number) {
-    return Math.max(min, Math.min(max, value))
-}
-
-
-
 function validateParameters(parameters: SimulationParameters): { valid: true } | { valid: false, reason: string } {
     if (parameters.simulationTotalMinutes <= 0) return { valid: false, reason: '仿真总时长必须大于 0。' };
     if (parameters.customerArriveRate < 0) return { valid: false, reason: '顾客到达率不能小于 0。' }
@@ -199,17 +204,6 @@ function validateParameters(parameters: SimulationParameters): { valid: true } |
     return { valid: true }
 }
 
-function useStateWithRef<S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>, RefObject<S>] {
-    const [state, setState] = useState(initialState)
-
-    const ref = useRef(state);
-    useEffect(() => {
-        ref.current = state;
-    }, [state]);
-
-    return [state, setState, ref];
-}
-
 export default function App() {
     const [online, setOnline] = useState(false)
     const [dashboard, setDashboard] = useState<DashboardResponse>(emptyDashboard)
@@ -220,113 +214,143 @@ export default function App() {
 
     const showToast = useToast();
 
-    const [dataList, setDataList, dataListRef] = useStateWithRef<SimulationDataQueryResponse>(emptyDataList);
+    const [dataList, setDataList] = useState<SimulationDataQueryResponse>(emptyDataList);
+    const dataListRef = useRef(dataList);
+    useEffect(() => { dataListRef.current = dataList; }, [dataList]);
+
     const dataListHistory = useRef(new Map<number, HistoryPoint[]>());
     const [history, setHistory] = useState<HistoryPoint[] | null>(null);
-    const [dataListLoading, setDataListLoading, dataListLoadingRef] = useStateWithRef(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [speedOpen, setSpeedOpen] = useState(false);
 
     const sortedDataList = useMemo(() => {
         return {
             selected: dataList.selected,
             datas: Object.values(dataList.simulationDataList).sort((a, b) => a.id - b.id)
         }
-    }, [dataList.simulationDataList])
+    }, [dataList.simulationDataList, dataList.selected])
 
     const totalQueueLength = useMemo(() => {
         return dashboard.windowsQueueSizes.reduce((sum, value) => sum + value, 0)
     }, [dashboard.windowsQueueSizes])
 
-    const updateStatus = useCallback(async () => {
+    const isRunning = dashboard.simulationState === 'started'
+
+    useEffect(() => {
+        if (!speedOpen) return
+        const close = (e: MouseEvent) => {
+            if (!(e.target instanceof Element)) return
+            if (e.target.closest('.speed-dropdown')) return
+            setSpeedOpen(false)
+        }
+        document.addEventListener('click', close)
+        return () => document.removeEventListener('click', close)
+    }, [speedOpen])
+
+    const statusPending = useRef(false);
+    const updateStatus = useCallback(async (signal?: AbortSignal) => {
+        if (statusPending.current) return
+        statusPending.current = true
         try {
-            const response = await fetchWithTimeout(`${API_BASE}/status`)
+            const response = await fetchWithTimeout(`${API_BASE}/status`, undefined, 5000, signal)
             if (!response.ok) throw new Error('status response not ok')
             const result = (await response.json()) as StatusResponse
             setOnline(result.online)
-        } catch {
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return
+            console.error('updateStatus failed:', error)
             setOnline(false)
+        } finally {
+            statusPending.current = false
         }
     }, [])
 
-    const updateDashboard = useCallback(async () => {
+    const dashboardPending = useRef(false);
+    const updateDashboard = useCallback(async (signal?: AbortSignal) => {
+        if (dashboardPending.current) return
+        dashboardPending.current = true
         try {
-            const response = await fetchWithTimeout(`${API_BASE}/dashboard`)
+            const response = await fetchWithTimeout(`${API_BASE}/dashboard`, undefined, 5000, signal)
             if (!response.ok) throw new Error('dashboard response not ok')
             const result = (await response.json()) as DashboardResponse
-
             setDashboard(result)
-        } catch {
-
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return
+            console.error('updateDashboard failed:', error)
+        } finally {
+            dashboardPending.current = false
         }
     }, [])
 
-    const updateDataList = useCallback(async () => {
-        if (dataListLoadingRef.current) {
-            return;
-        }
-        setDataListLoading(true)
+    const dataListPending = useRef(false);
+    const updateDataList = useCallback(async (signal?: AbortSignal) => {
+        if (dataListPending.current) return
+        dataListPending.current = true
         try {
-            const response = await fetchWithTimeout(`${API_BASE}/data/query`)
+            const response = await fetchWithTimeout(`${API_BASE}/data/query`, undefined, 5000, signal)
             if (!response.ok) throw new Error('data query response not ok')
             const result = (await response.json()) as SimulationDataQueryResponse
             setDataList(result)
 
-            var resultIds = new Set(Object.keys(result.simulationDataList).map(Number));
-
+            const resultIds = new Set(Object.keys(result.simulationDataList).map(Number))
             for (const id of dataListHistory.current.keys()) {
-                if (!resultIds.delete(id)) {
-                    dataListHistory.current.delete(id);
+                if (!resultIds.has(id)) {
+                    dataListHistory.current.delete(id)
                 }
             }
-            for (const newId of resultIds) {
-                dataListHistory.current.set(newId, []);
-            }
-
-            setHistory(result.selected !== null ? dataListHistory.current.get(result.selected)! : null);
-        } catch {
-
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return
+            console.error('updateDataList failed:', error)
         } finally {
-            setDataListLoading(false);
+            dataListPending.current = false
         }
     }, [])
 
-    const updateHistory = useCallback(async () => {
-        if (dataListRef.current.selected == null) {
-            return
-        }
-        if (dataListLoadingRef.current) {
-            return
-        }
-        setDataListLoading(true)
+    const historyPending = useRef(false);
+    const updateHistory = useCallback(async (signal?: AbortSignal) => {
+        const selectedId = dataListRef.current.selected
+        if (selectedId == null) return
+        if (historyPending.current) return
+        historyPending.current = true
+        setHistoryLoading(true)
 
-        const id = dataListRef.current.selected;
-        let before = dataListHistory.current.get(id)!;
+        let before = dataListHistory.current.get(selectedId)
+        if (!before) {
+            before = []
+            dataListHistory.current.set(selectedId, before)
+        }
 
         try {
             const pageSize = 1000
             let begin = before.length
             let hasMore = true
-            let newHistory = [];
+            const newHistory: HistoryPoint[] = []
             while (hasMore) {
-                const response = await fetchWithTimeout(`${API_BASE}/history/range/${id}?begin=${begin}&count=${pageSize}`, undefined, 10000)
+                const response = await fetchWithTimeout(
+                    `${API_BASE}/history/range/${selectedId}?begin=${begin}&count=${pageSize}`,
+                    undefined, 10000, signal
+                )
                 if (!response.ok) throw new Error('history response not ok')
                 const result = (await response.json()) as HistoryResponse
-                newHistory.push(...result.data);
-                begin += result.count;
-                hasMore = result.endingHasMore;
+                newHistory.push(...result.data)
+                begin += result.count
+                hasMore = result.endingHasMore
             }
 
-            if (newHistory.length != 0) {
-                const rst = [...before, ...newHistory];
-                dataListHistory.current.set(id, rst);
-
-                setHistory(rst);
+            if (newHistory.length !== 0) {
+                const merged = [...before, ...newHistory]
+                dataListHistory.current.set(selectedId, merged)
+                setHistory(merged)
             }
-        } catch {
+        } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') return
+            console.error('updateHistory failed:', error)
             showToast("加载历史失败")
         } finally {
-            setDataListLoading(false)
+            setHistoryLoading(false)
+            historyPending.current = false
         }
-    }, [])
+    }, [showToast])
 
     const refreshAll = useCallback(async () => {
         await Promise.all([updateStatus(), updateDashboard(), updateDataList()])
@@ -334,13 +358,18 @@ export default function App() {
     }, [updateDashboard, updateDataList, updateHistory, updateStatus])
 
     useEffect(() => {
+        const unmountController = new AbortController()
+        const { signal } = unmountController
+
         refreshAll()
-        const statusTimer = window.setInterval(updateStatus, 1000)
-        const dashboardTimer = window.setInterval(updateDashboard, 1000)
-        const dataListTimer = window.setInterval(updateDataList, 3000)
-        const historyTimer = window.setInterval(updateHistory, 1000)
+
+        const statusTimer = window.setInterval(() => updateStatus(signal), 1000)
+        const dashboardTimer = window.setInterval(() => updateDashboard(signal), 1000)
+        const dataListTimer = window.setInterval(() => updateDataList(signal), 3000)
+        const historyTimer = window.setInterval(() => updateHistory(signal), 1000)
 
         return () => {
+            unmountController.abort()
             window.clearInterval(statusTimer)
             window.clearInterval(dashboardTimer)
             window.clearInterval(dataListTimer)
@@ -443,6 +472,7 @@ export default function App() {
 
             showToast(`已选择仿真数据：${simData.name}`)
             await updateDataList()
+            await updateHistory()
         } catch {
             showToast('选择数据失败。')
         } finally {
@@ -466,7 +496,7 @@ export default function App() {
             }
 
             showToast(`已删除仿真数据：${simData.name}`)
-            await refreshAll()
+            await updateDataList()
         } catch {
             showToast('删除数据失败。')
         } finally {
@@ -474,39 +504,17 @@ export default function App() {
         }
     }
 
-    const updateSpeed = async (nextSpeed: number) => {
-        const safeSpeed = clamp(Number(nextSpeed), 0.1, 10)
-        setSpeed(safeSpeed)
+    const updateSpeed = async (speed: number) => {
+        setSpeed(speed)
 
         try {
-            const response = await fetchWithTimeout(`${API_BASE}/simulation/speed?speed=${safeSpeed}`, { method: 'POST' }, 5000)
+            const response = await fetchWithTimeout(`${API_BASE}/simulation/speed?speed=${speed}`, { method: 'POST' }, 5000)
             if (!response.ok) {
                 showToast('设置仿真速度失败。')
             }
         } catch {
             showToast('设置仿真速度失败。')
         }
-    }
-
-    const changeWindowCount = (count: number) => {
-        const safeCount = clamp(count, 1, +Infinity)
-        const nextWindows = [...parameters.windows]
-
-        while (nextWindows.length < safeCount) {
-            nextWindows.push({
-                dishType: ['A', 'B', 'C'][nextWindows.length % 3],
-                windowPrepTimeModifier: 1,
-            })
-        }
-
-        while (nextWindows.length > safeCount) {
-            nextWindows.pop()
-        }
-
-        setParameters((old) => ({
-            ...old,
-            windows: nextWindows,
-        }))
     }
 
     const downloadDashboard = () => {
@@ -546,11 +554,56 @@ export default function App() {
             </aside>
 
             <main className="content">
-                <div className="hero-card">
-                    <h1>北平食堂大学食堂就餐仿真系统</h1>
-                    <div className="hero-actions">
-                        <div className="chip">时钟：{formatTime(dashboard.currentHistory.time)}</div>
-                        <div className="chip">状态：{localizedState(dashboard.simulationState)}</div>
+                <div className="status-bar">
+                    <span className="status-bar-title">食堂仿真控制面板</span>
+                    <div className="status-bar-right">
+                        <span className="status-chip">{formatTime(dashboard.currentHistory.time)}</span>
+                        <span className={`status-chip ${isRunning ? 'running' : 'paused'}`}>
+                            {localizedState(dashboard.simulationState)}
+                        </span>
+                        <button
+                            className={`status-bar-btn ${isRunning ? 'pause' : 'play'}`}
+                            type="button"
+                            onClick={() => isRunning ? pauseSimulation() : resumeSimulation()}
+                            disabled={loading || dataList.selected == null}
+                        >
+                            {isRunning ? (
+                                <svg className="btn-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                                    <rect x="2" y="3" width="4" height="10" rx="1" />
+                                    <rect x="10" y="3" width="4" height="10" rx="1" />
+                                </svg>
+                            ) : (
+                                <svg className="btn-icon" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                                    <path d="M 4.5 2.5 L 12.5 8 L 4.5 13.5 Z" />
+                                </svg>
+                            )}
+                            {isRunning ? '暂停' : '开始'}
+                        </button>
+                        <div className="speed-dropdown">
+                            <button
+                                className="status-bar-btn speed-toggle"
+                                type="button"
+                                onClick={e => { e.stopPropagation(); setSpeedOpen(o => !o) }}
+                            >
+                                {speed.toFixed(1)}x
+                                <svg className={`btn-icon chevron ${speedOpen ? 'open' : ''}`} viewBox="0 0 12 12" width="10" height="10" fill="currentColor">
+                                    <path d="M 3 4.5 L 6 7.5 L 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
+                            {speedOpen && (
+                                <div className="speed-dropdown-panel" onClick={e => e.stopPropagation()}>
+                                    <div className="speed-dropdown-row">
+                                        <span>{speed.toFixed(1)}x</span>
+                                        <input type="range" min="0.1" max="10" step="0.1" value={speed} onChange={e => updateSpeed(Number(e.target.value))} />
+                                    </div>
+                                    <div className="speed-pills">
+                                        <button className="secondary-button" type="button" onClick={() => { updateSpeed(0.1); setSpeedOpen(false) }}>0.1x</button>
+                                        <button className="secondary-button" type="button" onClick={() => { updateSpeed(1); setSpeedOpen(false) }}>1.0x</button>
+                                        <button className="secondary-button" type="button" onClick={() => { updateSpeed(10); setSpeedOpen(false) }}>10.0x</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
                 {page == PageState.DataManagerPage &&
@@ -563,21 +616,15 @@ export default function App() {
                         downloadDashboard={downloadDashboard}
                         loading={loading}
                         refreshAll={refreshAll}
-                        setParameters={setParameters}
-                        changeWindowCount={changeWindowCount} />}
+                        setParameters={setParameters} />}
                 {page == PageState.MonitorPage &&
                     <MonitorPage
                         dashboard={dashboard}
-                        historyLoading={dataListLoading}
                         totalQueueLength={totalQueueLength}
                         history={history}
                         updateHistory={updateHistory}
                         hasSelectedSimulationData={dataList.selected != null}
-                        speed={speed}
-                        updateSpeed={updateSpeed}
-                        resumeSimulation={resumeSimulation}
-                        pauseSimulation={pauseSimulation}
-                        loading={loading} />}
+                        historyLoading={historyLoading} />}
             </main>
         </div>
     )

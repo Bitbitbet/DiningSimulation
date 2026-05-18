@@ -3,12 +3,14 @@
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: #4279d2cc;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
+    background: #1e2433;
+    color: #e0e4ed;
+    padding: 8px 18px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.25s ease;
     pointer-events: none;
     z-index: 1000;
 }
