@@ -1,8 +1,8 @@
-CREATE USER 'canteen_simulation'@'localhost' IDENTIFIED BY 'canteen_simulation';
+CREATE USER 'canteen_sim'@'localhost' IDENTIFIED BY 'canteen_simulation';
 
 CREATE DATABASE canteen_simulation_db;
 
-GRANT SELECT, UPDATE, INSERT, DELETE on canteen_simulation_db.* TO 'canteen_simulation'@'localhost';
+GRANT SELECT, UPDATE, INSERT, DELETE on canteen_simulation_db.* TO 'canteen_sim'@'localhost';
 
 USE canteen_simulation_db;
 
