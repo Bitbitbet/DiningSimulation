@@ -346,7 +346,6 @@ export default function App() {
         } catch (error) {
             if (error instanceof DOMException && error.name === 'AbortError') return
             console.error('updateHistory failed:', error)
-            showToast("加载历史失败")
         } finally {
             setHistoryLoading(false)
             historyPending.current = false

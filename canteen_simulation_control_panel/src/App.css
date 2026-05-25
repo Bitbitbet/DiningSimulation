@@ -532,8 +532,16 @@ nav {
     stroke-dasharray: 2 3;
 }
 
-.chart-cursor-dot {
-    stroke-width: 2;
+.chart-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    border: 2px solid;
+    background: white;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 4;
 }
 
 .chart-tooltip {

@@ -295,32 +295,32 @@ export default function MonitorPage({
                                                 className="mini-chart-line"
                                                 stroke={item.color}
                                             />
-                                            {/* Cursor line + dot */}
+                                            {/* Cursor line */}
                                             {hoverIndex != null && (
-                                                <>
-                                                    <line
-                                                        x1={chartData!.xPositions[hoverIndex]} y1={0}
-                                                        x2={chartData!.xPositions[hoverIndex]} y2={CHART_H}
-                                                        className="chart-cursor-line"
-                                                    />
-                                                    <circle
-                                                        cx={item.points[hoverIndex].x}
-                                                        cy={item.points[hoverIndex].y}
-                                                        r={2}
-                                                        className="chart-cursor-dot"
-                                                        fill="white"
-                                                        stroke={item.color}
-                                                    />
-                                                </>
+                                                <line
+                                                    x1={chartData!.xPositions[hoverIndex]} y1={0}
+                                                    x2={chartData!.xPositions[hoverIndex]} y2={CHART_H}
+                                                    className="chart-cursor-line"
+                                                />
                                             )}
                                         </svg>
                                         {hoverIndex != null && (
-                                            <div
-                                                className="chart-tooltip"
-                                                style={{ left: `${(chartData!.xPositions[hoverIndex] / CHART_W) * 100}%` }}
-                                            >
-                                                {item.format(item.values[hoverIndex])}{item.unit}
-                                            </div>
+                                            <>
+                                                <div
+                                                    className="chart-dot"
+                                                    style={{
+                                                        left: `${(chartData!.xPositions[hoverIndex] / CHART_W) * 100}%`,
+                                                        top: `${(item.points[hoverIndex].y / CHART_H) * 100}%`,
+                                                        borderColor: item.color,
+                                                    }}
+                                                />
+                                                <div
+                                                    className="chart-tooltip"
+                                                    style={{ left: `${(chartData!.xPositions[hoverIndex] / CHART_W) * 100}%` }}
+                                                >
+                                                    {item.format(item.values[hoverIndex])}{item.unit}
+                                                </div>
+                                            </>
                                         )}
                                     </div>
                                     <span className="mini-value">{item.latestValue}{item.unit}</span>
