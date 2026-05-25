@@ -207,4 +207,12 @@ public class SimulationDbService {
         }
         return shortestWindow;
     }
+
+    public void deleteAll(int id) {
+        historyMapper.deleteBySimId(id);
+        customerMapper.deleteBySimId(id);
+        windowMapper.deleteBySimId(id);
+        seatMapper.deleteBySimId(id);
+        dataMapper.deleteById(id);
+    }
 }

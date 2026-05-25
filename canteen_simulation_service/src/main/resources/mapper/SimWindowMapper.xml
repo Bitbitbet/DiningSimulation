@@ -4,6 +4,9 @@
     <delete id="deleteBySimulationId">
         DELETE FROM sim_window WHERE simulation_id=#{simId}
     </delete>
+    <delete id="deleteBySimId">
+        DELETE FROM sim_window WHERE simulation_id=#{simId}
+    </delete>
     <insert id="batchInsert">
         INSERT INTO sim_window (simulation_id,dish_type,window_prep_time_modifier,free_since)
         VALUES

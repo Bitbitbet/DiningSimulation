@@ -4,6 +4,9 @@
     <delete id="deleteBySimulationId">
         DELETE FROM sim_customer WHERE simulation_id=#{simId}
     </delete>
+    <delete id="deleteBySimId">
+        DELETE FROM sim_customer WHERE simulation_id=#{simId}
+    </delete>
     <insert id="batchInsert">
         INSERT INTO sim_customer (simulation_id,id,group_id,group_size,simulated_dish_prep_seconds,simulated_eat_time_seconds,arrive_time,order_type,state,dish_prep_end_time,start_waiting_for_seat_time,eat_end_time,seat_id)
         VALUES

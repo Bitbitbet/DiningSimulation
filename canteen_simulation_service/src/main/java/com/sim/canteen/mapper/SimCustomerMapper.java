@@ -8,4 +8,6 @@ public interface SimCustomerMapper {
     void deleteBySimulationId(@Param("simId") int simId);
     void batchInsert(@Param("simId") int simId, @Param("list") List<CustomerEntity> list);
     List<CustomerEntity> selectBySimulationId(@Param("simId") int simId);
+
+    void deleteBySimId(int id);
 }

@@ -8,4 +8,6 @@ public interface SimWindowMapper {
     void deleteBySimulationId(@Param("simId") int simId);
     void batchInsert(@Param("simId") int simId, @Param("list") List<WindowEntity> list);
     List<WindowEntity> selectBySimulationId(@Param("simId") int simId);
+
+    void deleteBySimId(int id);
 }

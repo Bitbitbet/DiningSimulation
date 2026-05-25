@@ -221,6 +221,8 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         }
         canteenSimulation.setSimulationData(null);
         datas.remove(id);
+
+        simulationDbService.deleteAll(id);
         return true;
     }
 

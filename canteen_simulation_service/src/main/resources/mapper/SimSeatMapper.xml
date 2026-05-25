@@ -4,6 +4,9 @@
     <delete id="deleteBySimulationId">
         DELETE FROM sim_seat WHERE simulation_id=#{simId}
     </delete>
+    <delete id="deleteBySimId">
+        DELETE FROM sim_seat WHERE simulation_id=#{simId}
+    </delete>
     <insert id="batchInsert">
         INSERT INTO sim_seat (simulation_id,id,four_free_since,three_free_since,two_free_since,one_free_since)
         VALUES

@@ -19,6 +19,9 @@
             next_customer_grp_time = #{nextCustomerGrpTime}
         WHERE id = #{id}
     </update>
+    <delete id="deleteById">
+        DELETE FROM simulation_data WHERE id = #{id}
+    </delete>
 
     <select id="selectById" resultType="com.sim.canteen.entity.SimulationDataPO">
         SELECT * FROM simulation_data WHERE id = #{id}

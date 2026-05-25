@@ -13,4 +13,6 @@ public interface SimulationDataMapper {
     List<Integer> selectAllIds();
     // 查询数据库最大的容器 ID
     Integer selectMaxId();
+
+    void deleteById(int id);
 }

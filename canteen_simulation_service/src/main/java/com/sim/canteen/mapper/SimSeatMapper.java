@@ -8,4 +8,6 @@ public interface SimSeatMapper {
     void deleteBySimulationId(@Param("simId") int simId);
     void batchInsert(@Param("simId") int simId, @Param("list") List<SeatEntity> list);
     List<SeatEntity> selectBySimulationId(@Param("simId") int simId);
+
+    void deleteBySimId(int id);
 }
