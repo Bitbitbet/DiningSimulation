@@ -478,15 +478,6 @@ nav {
     color: white;
 }
 
-.small-multiples {
-    display: grid;
-    gap: 1px;
-    background: #e8ebf0;
-    border: 1px solid #e8ebf0;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
 .mini-chart-row {
     display: flex;
     align-items: center;
@@ -512,11 +503,67 @@ nav {
     display: block;
 }
 
+.mini-chart-svg-wrap {
+    position: relative;
+    flex: 1;
+    height: 36px;
+}
+
 .mini-chart-line {
     fill: none;
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+}
+
+.chart-limit-line {
+    stroke-width: 0.5;
+    stroke-dasharray: 3 4;
+    opacity: 0.35;
+}
+
+.chart-area {
+    opacity: 0.06;
+}
+
+.chart-cursor-line {
+    stroke: #94a3b8;
+    stroke-width: 1;
+    stroke-dasharray: 2 3;
+}
+
+.chart-cursor-dot {
+    stroke-width: 2;
+}
+
+.chart-tooltip {
+    position: absolute;
+    top: -2px;
+    transform: translateX(-50%);
+    background: #1e2433;
+    color: #e0e4ed;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.chart-hover-time {
+    color: #1a2233;
+    font-weight: 700;
+}
+
+.small-multiples {
+    display: grid;
+    gap: 1px;
+    background: #e8ebf0;
+    border: 1px solid #e8ebf0;
+    border-radius: 4px;
+    overflow: hidden;
 }
 
 .mini-value {
@@ -657,6 +704,46 @@ nav {
     color: #4a5568;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+}
+
+/* ── Accordion sections ───────────────────────────────── */
+
+.section-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+    background: #f6f7f9;
+    color: #4a5568;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+.section-toggle:hover {
+    background: #eaecf1;
+}
+
+.section-toggle .toggle-chevron {
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+
+.section-toggle.open .toggle-chevron {
+    transform: rotate(90deg);
+}
+
+.section-toggle-count {
+    font-weight: 500;
+    color: #7a8396;
+    font-size: 11px;
 }
 
 .input-unit {

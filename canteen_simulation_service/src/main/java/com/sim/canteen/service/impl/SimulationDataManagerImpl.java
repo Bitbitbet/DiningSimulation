@@ -112,13 +112,13 @@ public class SimulationDataManagerImpl implements SimulationDataManager {
         if (parameters.customerEatSecondsAvg() <= 0) {
             return false;
         }
-        if (parameters.customerEatSecondsStdVar() <= 0) {
+        if (parameters.customerEatSecondsStdVar() < 0) {
             return false;
         }
         if (parameters.dishPrepSecondsAvg() <= 0) {
             return false;
         }
-        if (parameters.dishPrepSecondsStdVar() <= 0) {
+        if (parameters.dishPrepSecondsStdVar() < 0) {
             return false;
         }
         if (!parameters.windows()

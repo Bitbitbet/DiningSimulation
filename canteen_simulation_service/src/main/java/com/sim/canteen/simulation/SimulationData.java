@@ -27,7 +27,7 @@ public class SimulationData {
     public final List<SeatEntity> seats = new ArrayList<>();
     // 顾客组索引
     public final HashMap<Integer, List<Integer>> customerGroups = new HashMap<>();
-    // 计算到达学生组率
+    // 计算到达顾客组率
     public final double customerGroupArriveRate;
     public boolean finished = false;
     public double time = 0;

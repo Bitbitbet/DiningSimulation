@@ -190,16 +190,17 @@ export function formatTime(seconds: number) {
 
 function validateParameters(parameters: SimulationParameters): { valid: true } | { valid: false, reason: string } {
     if (parameters.simulationTotalMinutes <= 0) return { valid: false, reason: '仿真总时长必须大于 0。' };
-    if (parameters.customerArriveRate < 0) return { valid: false, reason: '顾客到达率不能小于 0。' }
+    if (parameters.customerArriveRate <= 0) return { valid: false, reason: '顾客到达率不能小于 0。' }
     if (parameters.customerEatSecondsAvg <= 0) return { valid: false, reason: '平均就餐时间必须大于 0。' }
     if (parameters.customerEatSecondsStdVar < 0) return { valid: false, reason: '就餐时间标准差不能小于 0。' }
     if (parameters.dishPrepSecondsAvg <= 0) return { valid: false, reason: '平均做餐时间必须大于 0。' }
     if (parameters.dishPrepSecondsStdVar < 0) return { valid: false, reason: '做餐时间标准差不能小于 0。' }
-    if (parameters.windows.length <= 0) return { valid: false, reason: '窗口数量必须大于 0。' }
+    if (parameters.windows.length < 3) return { valid: false, reason: '窗口数量必须大于等于 3。' }
+    if (!parameters.windows.some(w => w.dishType == "A")) { return { valid: false, reason: '没有提供套餐A的窗口' } }
+    if (!parameters.windows.some(w => w.dishType == "B")) { return { valid: false, reason: '没有提供套餐B的窗口' } }
+    if (!parameters.windows.some(w => w.dishType == "C")) { return { valid: false, reason: '没有提供套餐C的窗口' } }
     if (parameters.seatCount <= 0) return { valid: false, reason: '座位数量必须大于 0。' }
-
-    const invalidWindow = parameters.windows.some((item) => !item.dishType || item.windowPrepTimeModifier <= 0)
-    if (invalidWindow) return { valid: false, reason: '窗口餐品类型不能为空，且窗口效率系数必须大于 0。' }
+    if (parameters.windows.some((item) => item.windowPrepTimeModifier <= 0)) return { valid: false, reason: '窗口效率系数必须大于 0。' }
 
     return { valid: true }
 }
@@ -426,7 +427,7 @@ export default function App() {
     const submitParameters = async () => {
         const validate = validateParameters(parameters)
         if (!validate.valid) {
-            showToast(validate.reason)
+            showToast("新建数据失败：" + validate.reason)
             return
         }
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { formatTime, type DashboardResponse, type HistoryPoint } from "./App"
 
 function percent(value: number) {
@@ -57,6 +57,11 @@ const TIME_RANGES = [
     { label: '60分钟', minutes: 60 },
 ] as const
 
+const CHART_W = 600
+const CHART_H = 30
+const PAD_X = 4
+const PAD_Y = 3
+
 function smoothPath(points: { x: number; y: number }[]): string {
     if (points.length === 0) return ''
     if (points.length === 1) {
@@ -106,6 +111,8 @@ export default function MonitorPage({
         METRIC_SERIES.map(s => s.label)
     )
     const [timeRange, setTimeRange] = useState<number | null>(null)
+    const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+    const chartContainerRef = useRef<HTMLDivElement>(null)
 
     const toggleHistoryLabel = (label: string) => {
         setVisibleHistoryLabels((prev) => {
@@ -124,41 +131,75 @@ export default function MonitorPage({
         return history.filter(p => p.time >= cutoff)
     }, [history, timeRange])
 
-    const chartMapped = useMemo(() => {
-        if (filteredHistory.length === 0) return []
+    const chartData = useMemo(() => {
+        if (filteredHistory.length === 0) return null
         const startTime = filteredHistory[0].time
         const endTime = filteredHistory[filteredHistory.length - 1].time
         const timeSpan = endTime - startTime || 1
+        const innerW = CHART_W - PAD_X * 2
+        const innerH = CHART_H - PAD_Y * 2
 
-        const chartWidth = 600
-        const chartHeight = 30
-        const padX = 4
-        const padY = 3
+        const xPositions = filteredHistory.map(p =>
+            PAD_X + ((p.time - startTime) / timeSpan) * innerW
+        )
 
-        return METRIC_SERIES.map(metric => {
+        const series = METRIC_SERIES.map(metric => {
             const values = filteredHistory.map(metric.getter)
             const min = Math.min(...values, 0)
             const max = Math.max(...values, 1)
             const span = max - min || 1
 
-            const points = filteredHistory.map(p => {
-                const x = padX + ((p.time - startTime) / timeSpan) * (chartWidth - padX * 2)
-                const y = padY + (1 - (metric.getter(p) - min) / span) * (chartHeight - padY * 2)
-                return { x, y }
-            })
+            const points = values.map((v, i) => ({
+                x: xPositions[i],
+                y: PAD_Y + (1 - (v - min) / span) * innerH,
+            }))
+
+            const minY = PAD_Y + (1 - (min - min) / span) * innerH
+            const maxY = PAD_Y + (1 - (max - min) / span) * innerH
 
             return {
                 ...metric,
                 points,
                 pathD: smoothPath(points),
                 latestValue: metric.format(values[values.length - 1]),
+                min,
+                max,
+                minY,
+                maxY,
+                values,
             }
         })
+
+        return { series, xPositions }
     }, [filteredHistory])
+
+    const handleChartMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+        if (!chartData || chartData.xPositions.length === 0) return
+        const svg = e.currentTarget.querySelector('svg')
+        if (!svg) return
+        const rect = svg.getBoundingClientRect()
+        const svgX = e.clientX - rect.left
+        const viewX = (svgX / rect.width) * CHART_W
+
+        let closest = 0
+        let closestDist = Math.abs(chartData.xPositions[0] - viewX)
+        for (let i = 1; i < chartData.xPositions.length; i++) {
+            const dist = Math.abs(chartData.xPositions[i] - viewX)
+            if (dist < closestDist) {
+                closest = i
+                closestDist = dist
+            }
+        }
+        setHoverIndex(closest)
+    }, [chartData])
+
+    const handleChartMouseLeave = useCallback(() => {
+        setHoverIndex(null)
+    }, [])
 
     const occupiedCount = dashboard.seatOccupation.filter(s => s > 0).length
     const totalSeats = dashboard.seatOccupation.length
-    const visibleCharts = chartMapped.filter(s => visibleHistoryLabels.includes(s.label))
+    const visibleCharts = chartData?.series.filter(s => visibleHistoryLabels.includes(s.label)) ?? []
 
     return <>
         <section className="metrics-grid">
@@ -215,21 +256,73 @@ export default function MonitorPage({
                     <div className="empty-chart">请至少选择一个历史指标</div>
                 ) : (
                     <>
-                        <div className="small-multiples">
+                        <div
+                            className="small-multiples"
+                            ref={chartContainerRef}
+                            onMouseMove={handleChartMouseMove}
+                            onMouseLeave={handleChartMouseLeave}
+                        >
                             {visibleCharts.map((item) => (
                                 <div className="mini-chart-row" key={item.label}>
                                     <span className="mini-label">{item.label}</span>
-                                    <svg
-                                        viewBox={`0 0 600 30`}
-                                        className="mini-chart-svg"
-                                        preserveAspectRatio="none"
-                                    >
-                                        <path
-                                            d={item.pathD}
-                                            className="mini-chart-line"
-                                            stroke={item.color}
-                                        />
-                                    </svg>
+                                    <div className="mini-chart-svg-wrap">
+                                        <svg
+                                            viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+                                            className="mini-chart-svg"
+                                            preserveAspectRatio="none"
+                                        >
+                                            {/* Min limit line */}
+                                            <line
+                                                x1={0} y1={item.minY} x2={CHART_W} y2={item.minY}
+                                                className="chart-limit-line"
+                                                stroke={item.color}
+                                            />
+                                            {/* Max limit line */}
+                                            <line
+                                                x1={0} y1={item.maxY} x2={CHART_W} y2={item.maxY}
+                                                className="chart-limit-line"
+                                                stroke={item.color}
+                                            />
+                                            {/* Area fill under curve */}
+                                            <path
+                                                d={`${item.pathD} L ${chartData!.xPositions[chartData!.xPositions.length - 1].toFixed(1)} ${item.minY} L ${chartData!.xPositions[0].toFixed(1)} ${item.minY} Z`}
+                                                className="chart-area"
+                                                fill={item.color}
+                                            />
+                                            {/* Main curve */}
+                                            <path
+                                                d={item.pathD}
+                                                className="mini-chart-line"
+                                                stroke={item.color}
+                                            />
+                                            {/* Cursor line + dot */}
+                                            {hoverIndex != null && (
+                                                <>
+                                                    <line
+                                                        x1={chartData!.xPositions[hoverIndex]} y1={0}
+                                                        x2={chartData!.xPositions[hoverIndex]} y2={CHART_H}
+                                                        className="chart-cursor-line"
+                                                    />
+                                                    <circle
+                                                        cx={item.points[hoverIndex].x}
+                                                        cy={item.points[hoverIndex].y}
+                                                        r={3}
+                                                        className="chart-cursor-dot"
+                                                        fill="white"
+                                                        stroke={item.color}
+                                                    />
+                                                </>
+                                            )}
+                                        </svg>
+                                        {hoverIndex != null && (
+                                            <div
+                                                className="chart-tooltip"
+                                                style={{ left: `${(chartData!.xPositions[hoverIndex] / CHART_W) * 100}%` }}
+                                            >
+                                                {item.format(item.values[hoverIndex])}{item.unit}
+                                            </div>
+                                        )}
+                                    </div>
                                     <span className="mini-value">{item.latestValue}{item.unit}</span>
                                 </div>
                             ))}
@@ -238,6 +331,9 @@ export default function MonitorPage({
                         <div className="chart-time-row">
                             <span>{formatTime(filteredHistory[0]?.time ?? 0)}</span>
                             <span>{formatTime(filteredHistory[filteredHistory.length - 1]?.time ?? 0)}</span>
+                            {hoverIndex != null && (
+                                <span className="chart-hover-time">{formatTime(filteredHistory[hoverIndex]?.time ?? 0)}</span>
+                            )}
                         </div>
                     </>
                 )}

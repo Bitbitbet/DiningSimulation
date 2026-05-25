@@ -6,9 +6,13 @@ spring:
     name: canteen-simulation
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://lcoalhost:3306/canteen?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123
+    url: jdbc:mysql://localhost:3306/canteen_simulation_db?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: canteen_simulation
+    password: canteen_simulation
+  sql:
+    init:
+      mode: never
+      schema-locations: classpath:schema.sql
 
 
 mybatis:
