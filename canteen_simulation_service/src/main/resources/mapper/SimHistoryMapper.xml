@@ -3,6 +3,7 @@
 <mapper namespace="com.sim.canteen.mapper.SimHistoryMapper">
 
     <!-- 批量插入历史数据 -->
+    <!-- 批量插入历史数据：先删除本次模拟的旧数据，再插入 -->
     <insert id="batchInsert">
         INSERT INTO sim_history (
         simulation_id,
@@ -26,6 +27,11 @@
             #{item.congestionRate})
         </foreach>
     </insert>
+
+    <!-- 新加：删除当前模拟的历史数据 -->
+    <delete id="deleteBySimId">
+        DELETE FROM sim_history WHERE simulation_id = #{simId}
+    </delete>
 
     <!-- 查询历史 -->
     <select id="selectBySimulationId" resultType="com.sim.canteen.dto.response.HistoryPointDto">

@@ -424,6 +424,7 @@ public class CanteenSimulationImpl implements CanteenSimulation {
         SimulationData current = getCurrentSimulation();
         if (current != null && !current.finished) {
             simulationDbService.saveSnapshot(current);
+            simulationDbService.saveHistory(current);
         }
     }
 }

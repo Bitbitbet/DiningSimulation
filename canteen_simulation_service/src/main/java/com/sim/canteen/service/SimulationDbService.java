@@ -84,6 +84,7 @@ public class SimulationDbService {
     // ====================== 保存历史（结束时） ======================
     public void saveHistory(SimulationData data) {
         try {
+            historyMapper.deleteBySimId(data.id);
             if (!data.historyPoints.isEmpty()) {
                 // 修复：过滤 NaN
                 List<HistoryPointDto> cleanList = data.historyPoints.stream()
@@ -140,19 +141,29 @@ public class SimulationDbService {
             // ==============================================
             // 【1】重建窗口队列（已加，正常工作）
             // ==============================================
+            // 1. 先把所有窗口的队列清空
             for (WindowEntity window : data.windows) {
                 window.queue.clear();
             }
+
             for (CustomerEntity customer : data.customers.values()) {
-                if (customer.state == CustomerState.Queuing) {
-                    for (WindowEntity w : data.windows) {
-                        if (w.dishType == customer.orderType) {
-                            w.queue.add(customer.id);
-                            break;
-                        }
+                if (customer.state == CustomerState.Queuing) { // 只处理排队的人
+
+                    // 3. 找到这个顾客【点餐类型】对应的所有窗口
+                    List<WindowEntity> targetWindows = data.windows.stream()
+                            .filter(w -> w.dishType == customer.orderType)
+                            .toList();
+
+                    if (!targetWindows.isEmpty()) {
+                        // 4. 【核心】找到队列最短的窗口（和运行时逻辑一样！）
+                        WindowEntity bestWindow = findShortestQueueWindow(targetWindows);
+
+                        // 5. 把顾客丢进最短队列
+                        bestWindow.queue.add(customer.id);
                     }
                 }
             }
+
 
             // ==============================================
             // 【2】✅ 最后修复：重建顾客分组 customerGroups
@@ -163,12 +174,37 @@ public class SimulationDbService {
                 data.customerGroups.computeIfAbsent(customer.groupId, k -> new ArrayList<>())
                         .add(customer.id);
             }
+            for (SeatEntity seat : data.seats) {
+                seat.customers = new ArrayList<>();
+            }
+
+            for (CustomerEntity customer : data.customers.values()) {
+                if (customer.state == CustomerState.Eating) {
+                    // 找到顾客对应的座位
+                    for (SeatEntity seat : data.seats) {
+                        if (seat.id == customer.seatId) {
+                            seat.customers.add(customer.id);
+                            break;
+                        }
+                    }
+                }
+            }
 
             return data;
+
 
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
+    }
+    private WindowEntity findShortestQueueWindow(List<WindowEntity> windows) {
+        WindowEntity shortestWindow = windows.get(0);
+        for (WindowEntity window : windows) {
+            if (window.queue.size() < shortestWindow.queue.size()) {
+                shortestWindow = window;
+            }
+        }
+        return shortestWindow;
     }
 }

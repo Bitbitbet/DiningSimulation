@@ -7,4 +7,6 @@ import java.util.List;
 public interface    SimHistoryMapper {
     void batchInsert(@Param("simId") int simId, @Param("list") List<HistoryPointDto> list);
     List<HistoryPointDto> selectBySimulationId(@Param("simId") int simId);
+
+    void deleteBySimId(int id);
 }
