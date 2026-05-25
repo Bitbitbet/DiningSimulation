@@ -306,7 +306,7 @@ export default function MonitorPage({
                                                     <circle
                                                         cx={item.points[hoverIndex].x}
                                                         cy={item.points[hoverIndex].y}
-                                                        r={3}
+                                                        r={2}
                                                         className="chart-cursor-dot"
                                                         fill="white"
                                                         stroke={item.color}
