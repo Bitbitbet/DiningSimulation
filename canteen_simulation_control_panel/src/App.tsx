@@ -535,7 +535,7 @@ export default function App() {
                 <div className="brand">
                     <div className="brand-mark">食</div>
                     <div>
-                        <strong>食堂仿真系统</strong>
+                        <strong>就餐仿真系统</strong>
                         <span>控制面板</span>
                     </div>
                 </div>
@@ -555,7 +555,7 @@ export default function App() {
 
             <main className="content">
                 <div className="status-bar">
-                    <span className="status-bar-title">食堂仿真控制面板</span>
+                    <span className="status-bar-title">就餐仿真控制面板</span>
                     <div className="status-bar-right">
                         <span className="status-chip">{formatTime(dashboard.currentHistory.time)}</span>
                         <span className={`status-chip ${isRunning ? 'running' : 'paused'}`}>
