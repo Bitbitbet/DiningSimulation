@@ -4,7 +4,7 @@ import { useToast } from './Toast'
 import DataManagerPage from './DataManagerPage'
 import MonitorPage from './MonitorPage'
 
-const API_BASE = 'http://localhost:23456/api'
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:23456/api`
 
 type StatusResponse = {
     online: boolean
